@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin · Atende +Zap</title>
+<script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--bg4:#21262d;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#e6edf3;--text2:#7d8590;--text3:#484f58;
+  --green:#2ea043;--green-light:#196127;--green-bright:#3fb950;
+  --blue:#1f6feb;--blue-light:#388bfd;
+  --red:#da3633;--red-light:#f85149;
+  --yellow:#d29922;--yellow-light:#e3b341;
+  --purple:#8957e5;
+  --radius:10px;--radius-sm:6px;--radius-lg:16px;
+  --shadow:0 8px 32px rgba(0,0,0,0.4);
+  --shadow-sm:0 2px 8px rgba(0,0,0,0.3);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+h1,h2,h3,h4,h5{font-family:'Sora',sans-serif}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.fade-in{animation:fadeIn .3s ease both}
+.spinner{width:32px;height:32px;border:3px solid rgba(46,160,67,0.2);border-top-color:var(--green-bright);border-radius:50%;animation:spin .8s linear infinite}
+
+/* ── Login ── */
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden}
+.login-bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(46,160,67,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(46,160,67,0.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.login-glow{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(46,160,67,0.12) 0%,transparent 70%);top:-200px;left:50%;transform:translateX(-50%);pointer-events:none}
+.login-card{width:400px;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:44px 40px;position:relative;z-index:1;box-shadow:0 24px 60px rgba(0,0,0,0.6)}
+.login-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(46,160,67,0.1);border:1px solid rgba(46,160,67,0.2);border-radius:99px;padding:4px 12px;font-size:11px;color:var(--green-bright);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:20px}
+.login-title{font-size:26px;font-weight:800;color:var(--text);margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:32px;line-height:1.6}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase}
+.field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:14px;outline:none;transition:border .2s,box-shadow .2s}
+.field input:focus{border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(63,185,80,0.1)}
+.btn-login{width:100%;padding:12px;background:var(--green);color:#fff;font-family:'Sora',sans-serif;font-weight:700;font-size:14px;border:none;border-radius:var(--radius-sm);transition:all .2s;margin-top:4px}
+.btn-login:hover{background:var(--green-bright);transform:translateY(-1px);box-shadow:0 4px 16px rgba(46,160,67,0.35)}
+.btn-login:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.login-err{background:rgba(218,54,51,0.1);border:1px solid rgba(248,81,73,0.3);border-radius:var(--radius-sm);padding:10px 13px;font-size:13px;color:var(--red-light);margin-bottom:16px}
+
+/* ── Layout ── */
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:40;transition:transform .25s}
+.sidebar-logo{padding:20px 18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.logo-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:18px;height:18px;fill:#fff}
+.logo-text{font-family:'Sora',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.logo-text em{color:var(--green-bright);font-style:normal}
+.logo-badge{font-size:9px;background:rgba(139,87,229,0.2);color:#b794f4;border:1px solid rgba(139,87,229,0.3);border-radius:4px;padding:1px 5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.sidebar-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
+.nav-section{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;padding:12px 12px 6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;color:var(--text2);font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:rgba(46,160,67,0.1);color:var(--green-bright);font-weight:600}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;min-width:18px;text-align:center}
+.sidebar-footer{padding:10px 8px;border-top:1px solid var(--border)}
+.admin-card{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--bg3);border-radius:var(--radius-sm)}
+.admin-avatar{width:30px;height:30px;background:linear-gradient(135deg,var(--purple),#6366f1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.admin-info{flex:1;min-width:0}
+.admin-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-role{font-size:10px;color:var(--text3)}
+
+/* ── Main ── */
+.main{flex:1;margin-left:240px;display:flex;flex-direction:column;min-height:100vh;min-width:0}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:30;gap:12px}
+.topbar-title{font-family:'Sora',sans-serif;font-size:16px;font-weight:700;color:var(--text)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-btn{padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:none;color:var(--text2);font-size:13px;font-weight:500;transition:all .15s;display:flex;align-items:center;gap:6px}
+.topbar-btn:hover{background:var(--bg3);color:var(--text)}
+.topbar-btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.topbar-btn.primary:hover{background:var(--green-bright)}
+.page{flex:1;padding:24px;overflow-y:auto}
+
+/* ── Cards ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:700;color:var(--text);font-family:'Sora',sans-serif}
+
+/* ── Metrics ── */
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+.metric-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.metric-card.green::before{background:linear-gradient(90deg,var(--green),var(--green-bright))}
+.metric-card.blue::before{background:linear-gradient(90deg,var(--blue),var(--blue-light))}
+.metric-card.red::before{background:linear-gradient(90deg,var(--red),var(--red-light))}
+.metric-card.yellow::before{background:linear-gradient(90deg,var(--yellow),var(--yellow-light))}
+.metric-card.purple::before{background:linear-gradient(90deg,var(--purple),#b794f4)}
+.metric-label{font-size:11px;color:var(--text2);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+.metric-val{font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:var(--text);line-height:1}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:5px}
+.metric-icon{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;opacity:.7}
+.metric-icon.green{background:rgba(46,160,67,0.15);color:var(--green-bright)}
+.metric-icon.blue{background:rgba(31,111,235,0.15);color:var(--blue-light)}
+.metric-icon.red{background:rgba(218,54,51,0.15);color:var(--red-light)}
+.metric-icon.yellow{background:rgba(210,153,34,0.15);color:var(--yellow-light)}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3)}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+tr[style*="cursor"]:hover td{background:rgba(46,160,67,0.05)!important;}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-green{background:rgba(46,160,67,0.15);color:var(--green-bright)}
+.badge-red{background:rgba(218,54,51,0.15);color:var(--red-light)}
+.badge-yellow{background:rgba(210,153,34,0.15);color:var(--yellow-light)}
+.badge-blue{background:rgba(31,111,235,0.15);color:var(--blue-light)}
+.badge-gray{background:rgba(125,133,144,0.15);color:var(--text2)}
+.badge-purple{background:rgba(139,87,229,0.15);color:#b794f4}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-green{background:var(--green-bright);animation:pulse 2s infinite}
+.dot-red{background:var(--red-light)}
+.dot-yellow{background:var(--yellow-light);animation:pulse 2s infinite}
+
+/* ── Buttons ── */
+.btn{padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:none;color:var(--text2);font-size:12px;font-weight:500;transition:all .15s;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:var(--bg4);color:var(--text);border-color:var(--border2)}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.btn.primary:hover{background:var(--green-bright)}
+.btn.danger{color:var(--red-light)}
+.btn.danger:hover{background:rgba(218,54,51,0.1);border-color:var(--red)}
+.btn.sm{padding:4px 10px;font-size:11px}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:fadeIn .25s ease}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:20px;color:var(--text)}
+.modal-actions{display:flex;gap:8px;margin-top:24px;justify-content:flex-end}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-field{margin-bottom:14px}
+.form-field label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+.form-field input,.form-field select,.form-field textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:13px;outline:none;transition:border .2s,box-shadow .2s;resize:vertical}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(63,185,80,0.1)}
+.form-field select option{background:var(--bg3)}
+
+/* ── Cliente Painel ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--green-bright);border-bottom-color:var(--green-bright);font-weight:600}
+
+/* ── Status WA ── */
+.wa-connect-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.wa-connect-info{display:flex;align-items:center;gap:12px}
+.wa-icon{width:40px;height:40px;background:rgba(46,160,67,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.wa-icon svg{width:22px;height:22px;fill:var(--green-bright)}
+
+/* ── QR Code area ── */
+.qr-area{background:#fff;border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:260px}
+
+/* ── Financeiro ── */
+.fin-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.fin-row:last-child{border-bottom:none}
+
+/* ── Chat suporte ── */
+.chat-wrap{display:flex;flex-direction:column;height:460px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
+.chat-bubble{max-width:70%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word}
+.chat-bubble.admin{background:rgba(46,160,67,0.15);border:1px solid rgba(46,160,67,0.2);color:var(--text);align-self:flex-end;border-bottom-right-radius:3px}
+.chat-bubble.cliente{background:var(--bg2);border:1px solid var(--border);color:var(--text);align-self:flex-start;border-bottom-left-radius:3px}
+.bubble-meta{font-size:10px;color:var(--text3);margin-top:3px}
+.chat-input-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);background:var(--bg2)}
+.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:9px 14px;color:var(--text);font-size:13px;outline:none;resize:none;max-height:100px;transition:border .2s}
+.chat-input:focus{border-color:var(--green-bright)}
+.chat-send{width:36px;height:36px;border-radius:50%;background:var(--green);border:none;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.chat-send:hover{background:var(--green-bright)}
+.chat-send:disabled{opacity:.4}
+
+/* ── Toast ── */
+.toast-wrap{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:200}
+.toast{padding:11px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;animation:fadeIn .25s ease;box-shadow:var(--shadow)}
+.toast.success{background:rgba(46,160,67,0.15);border:1px solid rgba(63,185,80,0.3);color:var(--green-bright)}
+.toast.error{background:rgba(218,54,51,0.15);border:1px solid rgba(248,81,73,0.3);color:var(--red-light)}
+.toast.info{background:rgba(31,111,235,0.15);border:1px solid rgba(56,139,253,0.3);color:var(--blue-light)}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .metrics-row{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .metrics-row{grid-template-columns:1fr 1fr;gap:10px}
+  .form-grid{grid-template-columns:1fr}
+  .page{padding:16px}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useRef} = React;
+
+/* ── Supabase ── */
+const SB_URL='https://rhraigbapgpzvmcjbett.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+/* ── Admin credentials (altere conforme necessário) ── */
+const ADMINS=[
+  {email:'admin@atendezap.com',senha:'admin2024',nome:'Administrador',initials:'AD'},
+];
+
+/* ── Ícones ── */
+const IcoWA=()=><svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.556 4.123 1.526 5.855L.05 23.5l5.798-1.521A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.875 9.875 0 01-5.036-1.377l-.361-.215-3.741.981.999-3.648-.235-.374A9.86 9.86 0 012.106 12C2.106 6.58 6.58 2.106 12 2.106S21.894 6.58 21.894 12 17.42 21.894 12 21.894z"/></svg>;
+const IcoDash=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
+const IcoUsers=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>;
+const IcoMoney=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>;
+const IcoChat=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>;
+const IcoPlus=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const IcoEdit=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+const IcoTrash=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>;
+const IcoCheck=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>;
+const IcoX=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IcoRefresh=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>;
+const IcoLogout=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+const IcoMenu=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;
+const IcoSend=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
+const IcoEye=()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+
+/* ── Toast ── */
+function ToastMgr({toasts}){
+  return <div className="toast-wrap">{toasts.map(t=><div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}</div>;
+}
+
+/* ══════════════════════════════════════════
+   APP
+══════════════════════════════════════════ */
+function App(){
+  const [admin,setAdmin]=useState(null);
+  const [page,setPage]=useState('dashboard');
+  const [toasts,setToasts]=useState([]);
+  const [clientes,setClientes]=useState([]);
+  const [financeiro,setFinanceiro]=useState([]);
+  const [mensagens,setMensagens]=useState([]);
+  const [loadingData,setLoadingData]=useState(false);
+  const [selectedCliente,setSelectedCliente]=useState(null);
+  const [sidebarOpen,setSidebarOpen]=useState(false);
+
+  const addToast=useCallback((msg,type='success')=>{
+    const id=Date.now();
+    setToasts(p=>[...p,{id,msg,type}]);
+    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3500);
+  },[]);
+
+  const loadAll=useCallback(async()=>{
+    setLoadingData(true);
+    try{
+      const [{data:cls},{data:fin},{data:msgs}]=await Promise.all([
+        sb.from('usuarios').select('*').order('created_at',{ascending:false}),
+        sb.from('financeiro').select('*').order('vencimento',{ascending:true}),
+        sb.from('suporte_mensagens').select('*').order('created_at',{ascending:false}).limit(200),
+      ]);
+      if(cls) setClientes(cls);
+      if(fin) setFinanceiro(fin);
+      if(msgs) setMensagens(msgs);
+    }catch(e){addToast('Erro ao carregar dados','error');}
+    setLoadingData(false);
+  },[addToast]);
+
+  useEffect(()=>{if(admin) loadAll();},[admin,loadAll]);
+
+  /* Realtime mensagens */
+  useEffect(()=>{
+    if(!admin) return;
+    const ch=sb.channel('admin-msgs')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'suporte_mensagens'},
+        payload=>{
+          setMensagens(p=>{
+            if(p.some(m=>m.id===payload.new.id)) return p;
+            return [...p, payload.new];
+          });
+        })
+      .subscribe();
+    return()=>{sb.removeChannel(ch);};
+  },[admin]);
+
+  const openCliente=(cli)=>{setSelectedCliente(cli);setPage('cliente');};
+
+  if(!admin) return <Login onLogin={setAdmin} />;
+
+  const PAGE_LABELS={dashboard:'Dashboard',clientes:'Clientes',financeiro:'Financeiro',suporte:'Suporte',cliente: selectedCliente?.nome||'Cliente'};
+
+  return(
+    <div className="app">
+      {/* Overlay mobile */}
+      {sidebarOpen && <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:39}} onClick={()=>setSidebarOpen(false)}/>}
+
+      <Sidebar page={page} setPage={p=>{setPage(p);setSidebarOpen(false);}} admin={admin}
+        onLogout={()=>{setAdmin(null);setPage('dashboard');}}
+        open={sidebarOpen}
+        unreadCount={mensagens.filter(m=>m.remetente==='cliente' && !m.lido_admin).length}
+      />
+
+      <div className="main">
+        <div className="topbar">
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <button className="btn" style={{padding:'6px 8px',display:'none'}} id="mob-menu" onClick={()=>setSidebarOpen(p=>!p)}>
+              <IcoMenu/>
+            </button>
+            <span className="topbar-title">{PAGE_LABELS[page]}</span>
+          </div>
+          <div className="topbar-right">
+            <span style={{fontSize:12,color:'var(--text2)'}}>{new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'})}</span>
+            <button className="topbar-btn primary" onClick={()=>{setPage('clientes');}}>
+              <IcoPlus/> Novo cliente
+            </button>
+          </div>
+        </div>
+
+        <div className="page">
+          {loadingData ? (
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:60,gap:12,color:'var(--text2)'}}>
+              <div className="spinner"/>Carregando...
+            </div>
+          ) : (
+            <>
+              <div style={{display:page==='dashboard'?'block':'none'}}><Dashboard clientes={clientes} financeiro={financeiro} mensagens={mensagens} onOpenCliente={openCliente} setPage={setPage}/></div>
+              <div style={{display:page==='clientes'?'block':'none'}}><Clientes clientes={clientes} setClientes={setClientes} financeiro={financeiro} setFinanceiro={setFinanceiro} addToast={addToast} onOpen={openCliente}/></div>
+              <div style={{display:page==='financeiro'?'block':'none'}}><Financeiro clientes={clientes} financeiro={financeiro} setFinanceiro={setFinanceiro} addToast={addToast} onOpenCliente={openCliente}/></div>
+              <div style={{display:page==='suporte'?'block':'none'}}><Suporte mensagens={mensagens} setMensagens={setMensagens} clientes={clientes} addToast={addToast} onOpenCliente={openCliente}/></div>
+              <div style={{display:page==='cliente'&&selectedCliente?'block':'none'}}>
+                {selectedCliente && <ClientePanel cliente={selectedCliente} setCliente={setSelectedCliente} clientes={clientes} setClientes={setClientes} financeiro={financeiro} setFinanceiro={setFinanceiro} mensagens={mensagens} setMensagens={setMensagens} addToast={addToast} onBack={()=>setPage('clientes')}/>}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <ToastMgr toasts={toasts}/>
+      <style>{`@media(max-width:900px){#mob-menu{display:flex!important}}`}</style>
+    </div>
+  );
+}
+
+/* ══ LOGIN ══ */
+function Login({onLogin}){
+  const [email,setEmail]=useState('');
+  const [senha,setSenha]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState('');
+
+  const handle=async(e)=>{
+    e.preventDefault(); setErr(''); setLoading(true);
+    await new Promise(r=>setTimeout(r,600));
+    const a=ADMINS.find(x=>x.email===email&&x.senha===senha);
+    if(a) onLogin(a); else setErr('Credenciais inválidas.');
+    setLoading(false);
+  };
+
+  return(
+    <div className="login-page">
+      <div className="login-bg-grid"/>
+      <div className="login-glow"/>
+      <div className="login-card fade-in">
+        <div className="login-badge">⚡ Painel Admin</div>
+        <img src="./assets/logo.png" alt="Atende+Zap" style={{height:44,objectFit:'contain',marginBottom:4}}/>
+        <p className="login-sub">Acesso restrito à equipe de suporte interno.</p>
+        <form onSubmit={handle}>
+          <div className="field"><label>Email</label><input type="email" placeholder="admin@atendezap.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+          <div className="field"><label>Senha</label><input type="password" placeholder="••••••••" value={senha} onChange={e=>setSenha(e.target.value)}/></div>
+          {err && <div className="login-err">{err}</div>}
+          <button className="btn-login" disabled={loading}>{loading?'Verificando...':'Acessar painel'}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ══ SIDEBAR ══ */
+function Sidebar({page,setPage,admin,onLogout,open,unreadCount}){
+  const nav=[
+    {id:'dashboard',label:'Dashboard',icon:<IcoDash/>},
+    {id:'clientes',label:'Clientes',icon:<IcoUsers/>},
+    {id:'financeiro',label:'Financeiro',icon:<IcoMoney/>},
+    {id:'suporte',label:'Suporte',icon:<IcoChat/>,badge:unreadCount},
+  ];
+  return(
+    <div className={`sidebar ${open?'open':''}`}>
+      <div className="sidebar-logo">
+        <img src="./assets/logo.png" alt="Atende+Zap" style={{height:26,objectFit:'contain',maxWidth:120}}/>
+        <span className="logo-badge" style={{marginLeft:'auto'}}>Admin</span>
+      </div>
+      <nav className="sidebar-nav">
+        <div className="nav-section">Menu</div>
+        {nav.map(n=>(
+          <button key={n.id} className={`nav-item ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>
+            {n.icon}{n.label}
+            {n.badge>0 && <span className="nav-badge">{n.badge}</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="sidebar-footer">
+        <div className="admin-card">
+          <div className="admin-avatar">{admin.initials}</div>
+          <div className="admin-info">
+            <div className="admin-name">{admin.nome}</div>
+            <div className="admin-role">Suporte interno</div>
+          </div>
+          <button className="btn" style={{padding:'4px',border:'none',background:'none',color:'var(--text3)'}} onClick={onLogout} title="Sair"><IcoLogout/></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══ DASHBOARD ══ */
+function Dashboard({clientes,financeiro,mensagens,onOpenCliente,setPage}){
+  const total=clientes.length;
+  const ativos=clientes.filter(c=>c.evolution_instance).length;
+  const inad=financeiro.filter(f=>f.status==='vencido').length;
+  const receitaMes=financeiro.filter(f=>f.status==='pago').reduce((s,f)=>s+Number(f.valor),0);
+  const pendente=financeiro.filter(f=>f.status==='pendente').reduce((s,f)=>s+Number(f.valor),0);
+  const unread=mensagens.filter(m=>m.remetente==='cliente'&&!m.lido_admin).length;
+
+  const fmt=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+  const cStyle={cursor:'pointer',transition:'transform .18s, border-color .18s'};
+  const cEnter=(e)=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';};
+  const cLeave=(e)=>{e.currentTarget.style.transform='';e.currentTarget.style.borderColor='';};
+
+  const metrics=[
+    {cls:'blue',icon:<IcoUsers/>,label:'Clientes ativos',val:total,sub:`${ativos} com WhatsApp configurado`,go:'clientes'},
+    {cls:'green',icon:<IcoMoney/>,label:'Receita do mês',val:fmt(receitaMes),sub:`${fmt(pendente)} a receber`,go:'financeiro'},
+    {cls:'red',icon:<IcoX/>,label:'Inadimplentes',val:inad,sub:'Pagamentos vencidos',go:'financeiro'},
+    {cls:'yellow',icon:<IcoChat/>,label:'Msgs não lidas',val:unread,sub:'No chat de suporte',go:'suporte'},
+  ];
+
+  return(
+    <div>
+      {/* Métricas — todas clicáveis */}
+      <div className="metrics-row">
+        {metrics.map((m,i)=>(
+          <div key={i} className={`metric-card ${m.cls}`} style={cStyle}
+            onClick={()=>setPage(m.go)} onMouseEnter={cEnter} onMouseLeave={cLeave} title={`Ir para ${m.go}`}>
+            <div className={`metric-icon ${m.cls}`}>{m.icon}</div>
+            <div className="metric-label">{m.label}</div>
+            <div className="metric-val">{m.val}</div>
+            <div className="metric-sub">{m.sub}</div>
+            <div style={{position:'absolute',bottom:10,right:12,fontSize:11,color:'rgba(255,255,255,0.25)'}}>→</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        {/* Últimos clientes */}
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Clientes recentes</span>
+            <button className="btn sm" onClick={()=>setPage('clientes')}>Ver todos →</button>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Plano</th></tr></thead>
+              <tbody>
+                {clientes.slice(0,6).map(c=>{
+                  const fin=financeiro.filter(f=>f.cnpj===c.cnpj).at(-1);
+                  return(
+                    <tr key={c.id} style={{cursor:'pointer'}} onClick={()=>onOpenCliente(c)}
+                      onMouseEnter={e=>{[...e.currentTarget.cells].forEach(td=>td.style.background='rgba(255,255,255,0.03)');}}
+                      onMouseLeave={e=>{[...e.currentTarget.cells].forEach(td=>td.style.background='');}}>
+                      <td>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <div style={{width:28,height:28,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:'var(--green-bright)',flexShrink:0}}>
+                            {c.initials||(c.nome?.slice(0,2).toUpperCase())}
+                          </div>
+                          <div>
+                            <div style={{fontWeight:600}}>{c.nome}</div>
+                            <div style={{fontSize:11,color:'var(--text3)'}}>{c.cnpj}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {c.evolution_instance
+                          ?<span className="badge badge-green"><span className="dot dot-green"/>Configurado</span>
+                          :<span className="badge badge-gray">Pendente</span>}
+                      </td>
+                      <td>
+                        {fin
+                          ?<span className={`badge ${fin.status==='pago'?'badge-green':fin.status==='vencido'?'badge-red':'badge-yellow'}`}>
+                            {fin.status==='pago'?'Pago':fin.status==='vencido'?'Vencido':'Pendente'}
+                          </span>
+                          :<span className="badge badge-gray">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {clientes.length===0 && <tr><td colSpan={3} style={{textAlign:'center',color:'var(--text3)',padding:24}}>Nenhum cliente cadastrado</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          {/* Rodapé clicável */}
+          <div style={{padding:'10px 16px',borderTop:'1px solid var(--border)',display:'flex',justifyContent:'center'}}>
+            <button className="btn sm" style={{width:'100%',justifyContent:'center'}} onClick={()=>setPage('clientes')}>
+              Gerenciar todos os clientes →
+            </button>
+          </div>
+        </div>
+
+        {/* Vencimentos próximos */}
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Vencimentos próximos</span>
+            <button className="btn sm" onClick={()=>setPage('financeiro')}>Ver todos →</button>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead>
+              <tbody>
+                {financeiro.filter(f=>f.status!=='pago').slice(0,6).map(f=>{
+                  const cli=clientes.find(c=>c.cnpj===f.cnpj);
+                  const venc=new Date(f.vencimento+'T00:00');
+                  const hoje=new Date(); hoje.setHours(0,0,0,0);
+                  const diff=Math.ceil((venc-hoje)/(1000*60*60*24));
+                  return(
+                    <tr key={f.id} style={{cursor:'pointer'}} onClick={()=>setPage('financeiro')}
+                      onMouseEnter={e=>{[...e.currentTarget.cells].forEach(td=>td.style.background='rgba(255,255,255,0.03)');}}
+                      onMouseLeave={e=>{[...e.currentTarget.cells].forEach(td=>td.style.background='');}}>
+                      <td style={{fontWeight:500}}>{cli?.nome||f.cnpj}</td>
+                      <td style={{fontSize:12}}>{venc.toLocaleDateString('pt-BR')}</td>
+                      <td style={{fontSize:12}}>R$ {Number(f.valor).toFixed(2)}</td>
+                      <td>
+                        {f.status==='vencido'||diff<0
+                          ?<span className="badge badge-red">Vencido</span>
+                          :diff<=5
+                          ?<span className="badge badge-yellow">Em {diff}d</span>
+                          :<span className="badge badge-blue">Em {diff}d</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {financeiro.filter(f=>f.status!=='pago').length===0 && <tr><td colSpan={4} style={{textAlign:'center',color:'var(--text3)',padding:24}}>Tudo em dia ✓</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div style={{padding:'10px 16px',borderTop:'1px solid var(--border)',display:'flex',justifyContent:'center'}}>
+            <button className="btn sm" style={{width:'100%',justifyContent:'center'}} onClick={()=>setPage('financeiro')}>
+              Ver relatório financeiro →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══ CLIENTES ══ */
+function Clientes({clientes,setClientes,financeiro,setFinanceiro,addToast,onOpen}){
+  const [showModal,setShowModal]=useState(false);
+  const [editItem,setEditItem]=useState(null);
+  const [search,setSearch]=useState('');
+  const [filterWA,setFilterWA]=useState('todos');
+
+  const filtered=clientes.filter(c=>{
+    const matchSearch=c.nome?.toLowerCase().includes(search.toLowerCase())||c.cnpj?.includes(search);
+    const matchWA=filterWA==='todos'||(filterWA==='configurado'&&c.evolution_instance)||(filterWA==='pendente'&&!c.evolution_instance);
+    return matchSearch&&matchWA;
+  });
+
+  const saveCliente=async(form)=>{
+    try{
+      if(editItem){
+        const{data,error}=await sb.from('usuarios').update(form).eq('id',editItem.id).select().single();
+        if(error) throw error;
+        setClientes(p=>p.map(c=>c.id===editItem.id?{...c,...data}:c));
+        addToast('Cliente atualizado!');
+      }else{
+        const{data,error}=await sb.from('usuarios').insert([form]).select().single();
+        if(error) throw error;
+        setClientes(p=>[data,...p]);
+        /* Criar cobrança inicial */
+        if(form.valor_plano){
+          const venc=new Date(); venc.setDate(venc.getDate()+30);
+          await sb.from('financeiro').insert([{cnpj:form.cnpj,descricao:'Plano Atende+Zap',valor:form.valor_plano,vencimento:venc.toISOString().slice(0,10),status:'pendente'}]);
+        }
+        addToast('Cliente cadastrado com sucesso!');
+      }
+    }catch(e){addToast(e.message||'Erro ao salvar','error');}
+    setShowModal(false);setEditItem(null);
+  };
+
+  const deleteCliente=async(id)=>{
+    if(!confirm('Remover este cliente?')) return;
+    try{
+      await sb.from('usuarios').delete().eq('id',id);
+      setClientes(p=>p.filter(c=>c.id!==id));
+      addToast('Cliente removido.','info');
+    }catch{addToast('Erro ao remover','error');}
+  };
+
+  return(
+    <div>
+      <div style={{display:'flex',gap:10,marginBottom:18,flexWrap:'wrap',alignItems:'center'}}>
+        <input style={{background:'var(--bg2)',border:'1px solid var(--border2)',borderRadius:6,padding:'8px 13px',color:'var(--text)',fontSize:13,outline:'none',width:220}} placeholder="Buscar cliente..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        {['todos','configurado','pendente'].map(f=>(
+          <button key={f} className={`btn ${filterWA===f?'primary':''}`} onClick={()=>setFilterWA(f)} style={{textTransform:'capitalize'}}>{f==='todos'?'Todos':f==='configurado'?'WA Configurado':'WA Pendente'}</button>
+        ))}
+        <button className="btn primary" style={{marginLeft:'auto'}} onClick={()=>{setEditItem(null);setShowModal(true);}}>
+          <IcoPlus/> Novo cliente
+        </button>
+      </div>
+
+      <div className="card">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Cliente</th><th>CNPJ</th><th>WhatsApp</th><th>Instância</th><th>Cadastro</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              {filtered.map(c=>(
+                <tr key={c.id}>
+                  <td>
+                    <div style={{display:'flex',alignItems:'center',gap:9}}>
+                      <div style={{width:32,height:32,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'var(--green-bright)',flexShrink:0}}>
+                        {c.initials||(c.nome?.slice(0,2).toUpperCase())}
+                      </div>
+                      <span style={{fontWeight:600}}>{c.nome}</span>
+                    </div>
+                  </td>
+                  <td style={{fontSize:12,color:'var(--text2)'}}>{c.cnpj}</td>
+                  <td>
+                    {c.evolution_instance
+                      ?<span className="badge badge-green"><span className="dot dot-green"/>Configurado</span>
+                      :<span className="badge badge-gray">Pendente</span>}
+                  </td>
+                  <td style={{fontSize:12,color:'var(--text2)'}}>{c.evolution_instance||'—'}</td>
+                  <td style={{fontSize:12,color:'var(--text3)'}}>{c.created_at?new Date(c.created_at).toLocaleDateString('pt-BR'):'—'}</td>
+                  <td>
+                    <div style={{display:'flex',gap:6}}>
+                      <button className="btn sm" onClick={()=>onOpen(c)}><IcoEye/>Ver</button>
+                      <button className="btn sm" onClick={()=>{setEditItem(c);setShowModal(true);}}><IcoEdit/>Editar</button>
+                      <button className="btn sm danger" onClick={()=>deleteCliente(c.id)}><IcoTrash/></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length===0 && <tr><td colSpan={6} style={{textAlign:'center',color:'var(--text3)',padding:32}}>Nenhum cliente encontrado</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showModal && <ClienteModal item={editItem} onClose={()=>{setShowModal(false);setEditItem(null);}} onSave={saveCliente} addToast={addToast}/>}
+    </div>
+  );
+}
+
+function ClienteModal({item,onClose,onSave,addToast}){
+  const [form,setForm]=useState({
+    cnpj:item?.cnpj||'',senha:item?.senha||'',nome:item?.nome||'',initials:item?.initials||'',
+    evolution_url:item?.evolution_url||'',evolution_instance:item?.evolution_instance||'',evolution_key:item?.evolution_key||'',
+    valor_plano:item?.valor_plano||197,
+  });
+  const up=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const formatCNPJ=(v)=>{const d=v.replace(/\D/g,'').slice(0,14);return d.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');};
+
+  /* Estados de conexão WA */
+  const [waStep, setWaStep] = useState('idle'); // idle | criando | qr | conectado | erro
+  const [qrCode, setQrCode] = useState('');
+  const [waMsg, setWaMsg] = useState('');
+  const pollRef = useRef(null);
+
+  /* Verifica se os campos Evolution estão preenchidos */
+  const evolutionPreenchido = form.evolution_url && form.evolution_instance && form.evolution_key;
+
+  /* Quando os 3 campos ficam preenchidos, tenta criar/conectar instância automaticamente */
+  useEffect(() => {
+    if (!evolutionPreenchido || waStep !== 'idle') return;
+    const timer = setTimeout(() => conectarWA(), 800);
+    return () => clearTimeout(timer);
+  }, [form.evolution_url, form.evolution_instance, form.evolution_key]);
+
+  const conectarWA = async () => {
+    if (!form.evolution_url || !form.evolution_instance || !form.evolution_key) return;
+    setWaStep('criando'); setWaMsg('Criando instância na Evolution API...');
+    try {
+      /* 1. Tenta criar a instância (caso não exista) */
+      try {
+        await fetch(`${form.evolution_url}/instance/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: form.evolution_key },
+          body: JSON.stringify({ instanceName: form.evolution_instance, qrcode: true, integration: 'WHATSAPP-BAILEYS' })
+        });
+      } catch {}
+
+      /* 2. Verifica estado atual */
+      setWaMsg('Verificando estado da instância...');
+      try {
+        const r = await fetch(`${form.evolution_url}/instance/connectionState/${form.evolution_instance}`, {
+          headers: { apikey: form.evolution_key }
+        });
+        const d = await r.json();
+        if (d?.instance?.state === 'open') {
+          setWaStep('conectado'); setWaMsg('WhatsApp já conectado!'); return;
+        }
+      } catch {}
+
+      /* 3. Solicita QR Code */
+      setWaMsg('Gerando QR Code...');
+      const r = await fetch(`${form.evolution_url}/instance/connect/${form.evolution_instance}`, {
+        headers: { apikey: form.evolution_key }
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setQrCode(d?.base64 || 'DEMO');
+        setWaStep('qr'); setWaMsg('Escaneie o QR Code com o WhatsApp do cliente');
+      } else { setQrCode('DEMO'); setWaStep('qr'); setWaMsg('Escaneie o QR Code'); }
+    } catch (e) {
+      setWaStep('qr'); setQrCode('DEMO'); setWaMsg('Modo demonstração — conecte a Evolution API real para escanear');
+    }
+
+    /* 4. Polling de status */
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`${form.evolution_url}/instance/connectionState/${form.evolution_instance}`, {
+          headers: { apikey: form.evolution_key }
+        });
+        const d = await r.json();
+        if (d?.instance?.state === 'open') {
+          setWaStep('conectado'); setWaMsg('WhatsApp conectado com sucesso! ✓');
+          clearInterval(pollRef.current);
+        }
+      } catch {}
+    }, 4000);
+    setTimeout(() => clearInterval(pollRef.current), 120000);
+  };
+
+  const resetWA = () => {
+    clearInterval(pollRef.current);
+    setWaStep('idle'); setQrCode(''); setWaMsg('');
+  };
+
+  useEffect(() => () => clearInterval(pollRef.current), []);
+
+  const waColor = { idle:'var(--text3)', criando:'var(--yellow-light)', qr:'var(--blue-light)', conectado:'var(--green-bright)', erro:'var(--red-light)' };
+  const waIcon = { idle:'○', criando:'⟳', qr:'📱', conectado:'✓', erro:'✗' };
+
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{width:560}} onClick={e=>e.stopPropagation()}>
+        <h3>{item?'Editar cliente':'Novo cliente'}</h3>
+
+        {/* Dados básicos */}
+        <div className="form-grid">
+          <div className="form-field"><label>Nome da empresa</label><input value={form.nome} onChange={e=>up('nome',e.target.value)} placeholder="Clínica Saúde Total"/></div>
+          <div className="form-field"><label>Iniciais</label><input value={form.initials} onChange={e=>up('initials',e.target.value.toUpperCase().slice(0,2))} placeholder="CS" maxLength={2}/></div>
+          <div className="form-field"><label>CNPJ</label><input value={form.cnpj} onChange={e=>up('cnpj',formatCNPJ(e.target.value))} placeholder="00.000.000/0000-00"/></div>
+          <div className="form-field"><label>Senha de acesso</label><input value={form.senha} onChange={e=>up('senha',e.target.value)} placeholder="senha123"/></div>
+        </div>
+
+        {/* Evolution API */}
+        <div style={{borderTop:'1px solid var(--border)',marginTop:4,paddingTop:16,marginBottom:4}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--text3)',letterSpacing:'.06em',textTransform:'uppercase'}}>Evolution API — WhatsApp</div>
+            {waStep !== 'idle' && (
+              <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:waColor[waStep]}}>
+                <span style={{fontSize:14}}>{waIcon[waStep]}</span>
+                <span>{waMsg}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="form-field"><label>URL da Evolution API</label>
+            <input value={form.evolution_url} onChange={e=>{up('evolution_url',e.target.value);resetWA();}} placeholder="https://evolution.seudominio.com"/>
+          </div>
+          <div className="form-grid">
+            <div className="form-field"><label>Nome da instância</label>
+              <input value={form.evolution_instance} onChange={e=>{up('evolution_instance',e.target.value);resetWA();}} placeholder="cliente-001"/>
+            </div>
+            <div className="form-field"><label>API Key</label>
+              <input type="password" value={form.evolution_key} onChange={e=>{up('evolution_key',e.target.value);resetWA();}} placeholder="••••••••"/>
+            </div>
+          </div>
+
+          {/* Área do QR Code / status */}
+          {(waStep === 'qr' || waStep === 'criando') && (
+            <div style={{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:10,padding:16,marginBottom:12}}>
+              {waStep === 'criando' && (
+                <div style={{display:'flex',alignItems:'center',gap:10,color:'var(--text2)',fontSize:13}}>
+                  <div className="spinner" style={{width:20,height:20,borderWidth:2,flexShrink:0}}/>
+                  {waMsg}
+                </div>
+              )}
+              {waStep === 'qr' && (
+                <div style={{display:'flex',gap:16,alignItems:'flex-start'}}>
+                  {/* QR Code */}
+                  <div style={{background:'#fff',borderRadius:8,padding:8,flexShrink:0,boxShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>
+                    {qrCode && qrCode !== 'DEMO' ? (
+                      <img src={qrCode} alt="QR" style={{width:130,height:130,display:'block'}}/>
+                    ) : (
+                      <svg width="130" height="130" viewBox="0 0 200 200">
+                        <rect width="200" height="200" fill="white"/>
+                        {Array.from({length:9},(_,r)=>Array.from({length:9},(_,c)=>{
+                          const v=[[1,1,1,1,1,1,1,0,1],[1,0,0,0,0,0,1,0,0],[1,0,1,1,1,0,1,0,1],[1,0,1,1,1,0,1,0,0],[1,0,1,1,1,0,1,0,1],[1,0,0,0,0,0,1,0,1],[1,1,1,1,1,1,1,0,1],[0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,1]];
+                          return v[r]&&v[r][c]?<rect key={`${r}-${c}`} x={12+c*20} y={12+r*20} width="18" height="18" fill="#0d1117" rx="2"/>:null;
+                        })).flat()}
+                        {Array.from({length:5},(_,r)=>Array.from({length:5},(_,c)=>{
+                          const v=[[1,1,1,1,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,0,0,1],[1,1,1,1,1]];
+                          return v[r]&&v[r][c]?<rect key={`b${r}-${c}`} x={110+c*16} y={110+r*16} width="14" height="14" fill="#2ea043" rx="1"/>:null;
+                        })).flat()}
+                      </svg>
+                    )}
+                  </div>
+                  {/* Instruções */}
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--text)',marginBottom:8}}>Escaneie com o WhatsApp</div>
+                    {['Abra o WhatsApp no celular do cliente','Toque em ⋮ → Dispositivos vinculados','Toque em Vincular um dispositivo','Aponte para o QR Code ao lado'].map((s,i)=>(
+                      <div key={i} style={{display:'flex',gap:8,alignItems:'flex-start',marginBottom:6}}>
+                        <span style={{width:18,height:18,borderRadius:'50%',background:'rgba(46,160,67,0.2)',color:'var(--green-bright)',fontSize:10,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1}}>{i+1}</span>
+                        <span style={{fontSize:12,color:'var(--text2)',lineHeight:1.4}}>{s}</span>
+                      </div>
+                    ))}
+                    <button className="btn sm" style={{marginTop:6}} onClick={()=>{resetWA();setTimeout(conectarWA,100);}}>
+                      <IcoRefresh/> Gerar novo QR
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {waStep === 'conectado' && (
+            <div style={{background:'rgba(46,160,67,0.08)',border:'1px solid rgba(63,185,80,0.25)',borderRadius:10,padding:'12px 16px',marginBottom:12,display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:32,height:32,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--green-bright)',flexShrink:0}}>✓</div>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--green-bright)'}}>WhatsApp conectado!</div>
+                <div style={{fontSize:11,color:'var(--text3)'}}>O cliente poderá acessar o sistema sem precisar configurar nada.</div>
+              </div>
+            </div>
+          )}
+
+          {evolutionPreenchido && waStep === 'idle' && (
+            <button className="btn sm primary" onClick={conectarWA} style={{marginBottom:12}}>
+              ⚡ Conectar WhatsApp agora
+            </button>
+          )}
+        </div>
+
+        {!item && <div className="form-field"><label>Valor do plano (R$)</label><input type="number" value={form.valor_plano} onChange={e=>up('valor_plano',e.target.value)} placeholder="197"/></div>}
+
+        <div className="modal-actions">
+          <button className="btn" onClick={()=>{resetWA();onClose();}}>Cancelar</button>
+          <button className="btn primary" onClick={()=>{resetWA();onSave(form);}}>
+            {waStep==='conectado'?'✓ Salvar cliente conectado':'Salvar cliente'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function ClientePanel({cliente,setCliente,clientes,setClientes,financeiro,setFinanceiro,mensagens,setMensagens,addToast,onBack}){
+  const [tab,setTab]=useState('operacional');
+  const [waStatus,setWaStatus]=useState('verificando');
+  const [qrCode,setQrCode]=useState('');
+  const [loadingQR,setLoadingQR]=useState(false);
+  const pollRef=useRef(null);
+
+  const cliMsgs=mensagens.filter(m=>m.cnpj===cliente.cnpj).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  const cliAtend=[];
+  const cliAg=[];
+
+  /* Verificar status WA */
+  useEffect(()=>{
+    const check=async()=>{
+      if(!cliente.evolution_url||!cliente.evolution_instance){setWaStatus('sem_config');return;}
+      try{
+        const r=await fetch(`${cliente.evolution_url}/instance/connectionState/${cliente.evolution_instance}`,{headers:{apikey:cliente.evolution_key||''}});
+        const d=await r.json();
+        setWaStatus(d?.instance?.state==='open'?'conectado':'desconectado');
+      }catch{setWaStatus('desconectado');}
+    };
+    check();
+  },[cliente]);
+
+  const gerarQR=async()=>{
+    if(!cliente.evolution_url||!cliente.evolution_instance){addToast('Configure a Evolution API primeiro','error');return;}
+    setLoadingQR(true);setWaStatus('conectando');
+    try{
+      const r=await fetch(`${cliente.evolution_url}/instance/connect/${cliente.evolution_instance}`,{headers:{apikey:cliente.evolution_key||''}});
+      if(r.ok){const d=await r.json();if(d?.base64) setQrCode(d.base64); else setQrCode('DEMO');}
+      else setQrCode('DEMO');
+    }catch{setQrCode('DEMO');}
+    setLoadingQR(false);
+    pollRef.current=setInterval(async()=>{
+      try{
+        const r=await fetch(`${cliente.evolution_url}/instance/connectionState/${cliente.evolution_instance}`,{headers:{apikey:cliente.evolution_key||''}});
+        const d=await r.json();
+        if(d?.instance?.state==='open'){setWaStatus('conectado');setQrCode('');clearInterval(pollRef.current);addToast('WhatsApp conectado!');}
+      }catch{}
+    },5000);
+  };
+
+  const desconectar=async()=>{
+    clearInterval(pollRef.current);
+    try{await fetch(`${cliente.evolution_url}/instance/logout/${cliente.evolution_instance}`,{method:'DELETE',headers:{apikey:cliente.evolution_key||''}});}catch{}
+    setWaStatus('desconectado');setQrCode('');addToast('WhatsApp desconectado.','info');
+  };
+
+  const waBadge=waStatus==='conectado'
+    ?<span className="badge badge-green"><span className="dot dot-green"/>Conectado</span>
+    :waStatus==='conectando'?<span className="badge badge-yellow"><span className="dot dot-yellow"/>Conectando...</span>
+    :waStatus==='sem_config'?<span className="badge badge-gray">Não configurado</span>
+    :waStatus==='verificando'?<span className="badge badge-gray">Verificando...</span>
+    :<span className="badge badge-red">Desconectado</span>;
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
+        <button className="btn" onClick={onBack}>← Voltar</button>
+        <div style={{width:44,height:44,borderRadius:12,background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:800,color:'var(--green-bright)'}}>
+          {cliente.initials||(cliente.nome?.slice(0,2).toUpperCase())}
+        </div>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:700}}>{cliente.nome}</h2>
+          <div style={{fontSize:12,color:'var(--text2)'}}>{cliente.cnpj}</div>
+        </div>
+        <div style={{marginLeft:'auto'}}>{waBadge}</div>
+      </div>
+
+      {/* Tabs */}
+      <div className="tabs">
+        {[['operacional','📊 Operacional'],['whatsapp','📱 WhatsApp'],['financeiro','💰 Financeiro'],['suporte','💬 Suporte']].map(([id,label])=>(
+          <button key={id} className={`tab ${tab===id?'active':''}`} onClick={()=>setTab(id)}>{label}</button>
+        ))}
+      </div>
+
+      {/* ── Operacional ── */}
+      {tab==='operacional' && (
+        <div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:20}}>
+            {[
+              {label:'Atendimentos hoje', val:0, cls:'blue', tab:'whatsapp', tip:'Ver WhatsApp'},
+              {label:'Agendamentos',       val:0, cls:'green', tab:'financeiro', tip:'Ver Financeiro'},
+              {label:'Msgs no suporte',   val:cliMsgs.length, cls:'yellow', tab:'suporte', tip:'Ir ao Suporte'},
+            ].map(m=>(
+              <div key={m.label} className={`metric-card ${m.cls}`}
+                style={{cursor:'pointer',transition:'transform .18s, border-color .18s'}}
+                onClick={()=>setTab(m.tab)}
+                onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';}}
+                onMouseLeave={e=>{e.currentTarget.style.transform='';}}
+                title={m.tip}>
+                <div className="metric-label">{m.label}</div>
+                <div className="metric-val">{m.val}</div>
+                <div style={{position:'absolute',bottom:10,right:12,fontSize:10,color:'rgba(255,255,255,0.25)'}}>→ {m.tip}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Informações do cliente</span>
+              <button className="btn sm" onClick={()=>setTab('whatsapp')}>📱 WhatsApp →</button>
+            </div>
+            <div style={{padding:18,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              {[
+                ['CNPJ', cliente.cnpj],
+                ['Nome', cliente.nome],
+                ['Instância Evolution', cliente.evolution_instance||'—'],
+                ['Servidor Evolution', cliente.evolution_url||'—'],
+                ['Senha de acesso', cliente.senha],
+              ].map(([l,v])=>(
+                <div key={l} style={{background:'var(--bg3)',borderRadius:8,padding:'10px 14px',cursor: l==='Instância Evolution'||l==='Servidor Evolution'?'pointer':'default'}}
+                  onClick={()=>{ if(l==='Instância Evolution'||l==='Servidor Evolution') setTab('whatsapp'); }}>
+                  <div style={{fontSize:10,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4}}>{l}</div>
+                  <div style={{fontSize:13,color:'var(--text)',fontWeight:500,wordBreak:'break-all'}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {/* Rodapé com atalhos para as abas */}
+            <div style={{padding:'12px 18px',borderTop:'1px solid var(--border)',display:'flex',gap:8,flexWrap:'wrap'}}>
+              {[['📱 WhatsApp','whatsapp'],['💰 Financeiro','financeiro'],['💬 Suporte','suporte']].map(([l,t])=>(
+                <button key={t} className="btn sm" onClick={()=>setTab(t)}>{l}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── WhatsApp ── */}
+      {tab==='whatsapp' && (
+        <div style={{maxWidth:580}}>
+          <div className="wa-connect-box">
+            <div className="wa-connect-info">
+              <div className="wa-icon"><IcoWA/></div>
+              <div>
+                <div style={{fontWeight:600,fontSize:14}}>{cliente.nome}</div>
+                <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>{cliente.evolution_instance||'Instância não configurada'}</div>
+              </div>
+            </div>
+            {waBadge}
+          </div>
+
+          {!cliente.evolution_instance && (
+            <div style={{background:'rgba(210,153,34,0.1)',border:'1px solid rgba(227,179,65,0.3)',borderRadius:8,padding:14,fontSize:13,color:'var(--yellow-light)',marginBottom:16}}>
+              ⚠️ Configure a Evolution API na aba Operacional antes de conectar.
+            </div>
+          )}
+
+          {waStatus==='desconectado' && cliente.evolution_instance && (
+            <button className="btn primary" style={{width:'100%',padding:12,fontSize:14,justifyContent:'center'}} onClick={gerarQR} disabled={loadingQR}>
+              {loadingQR?'Gerando QR Code...':'⚡ Gerar QR Code para conexão'}
+            </button>
+          )}
+
+          {waStatus==='conectando' && (
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:16,padding:24}}>
+              {qrCode&&qrCode!=='DEMO'
+                ?<div className="qr-area"><img src={qrCode} alt="QR" style={{width:200,height:200}}/><p style={{fontSize:12,color:'#555',textAlign:'center'}}>Escaneie com o WhatsApp do cliente</p></div>
+                :<div className="qr-area">
+                  <svg width="200" height="200" viewBox="0 0 200 200">
+                    <rect width="200" height="200" fill="white"/>
+                    {Array.from({length:9},(_,r)=>Array.from({length:9},(_,c)=>{const v=[[1,1,1,1,1,1,1,0,1],[1,0,0,0,0,0,1,0,0],[1,0,1,1,1,0,1,0,1],[1,0,1,1,1,0,1,0,0],[1,0,1,1,1,0,1,0,1],[1,0,0,0,0,0,1,0,1],[1,1,1,1,1,1,1,0,1],[0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,1]];return v[r]&&v[r][c]?<rect key={`${r}-${c}`} x={12+c*20} y={12+r*20} width="18" height="18" fill="#0d1117" rx="2"/>:null;})).flat()}
+                    {Array.from({length:5},(_,r)=>Array.from({length:5},(_,c)=>{const v=[[1,1,1,1,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,0,0,1],[1,1,1,1,1]];return v[r]&&v[r][c]?<rect key={`b${r}-${c}`} x={110+c*16} y={110+r*16} width="14" height="14" fill="#2ea043" rx="1"/>:null;})).flat()}
+                  </svg>
+                  <p style={{fontSize:12,color:'#555',textAlign:'center'}}>Escaneie com o WhatsApp do cliente</p>
+                </div>
+              }
+              <button className="btn danger" onClick={desconectar}>Cancelar</button>
+            </div>
+          )}
+
+          {waStatus==='conectado' && (
+            <div style={{background:'rgba(46,160,67,0.08)',border:'1px solid rgba(63,185,80,0.2)',borderRadius:10,padding:24,display:'flex',flexDirection:'column',alignItems:'center',gap:12,textAlign:'center'}}>
+              <div style={{width:56,height:56,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <IcoCheck/>
+              </div>
+              <div>
+                <p style={{fontWeight:700,fontSize:16,color:'var(--green-bright)'}}>WhatsApp conectado!</p>
+                <p style={{fontSize:13,color:'var(--text2)',marginTop:4}}>O sistema do cliente está ativo e recebendo mensagens.</p>
+              </div>
+              <button className="btn danger" onClick={desconectar}>Desconectar</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Financeiro ── */}
+      {tab==='financeiro' && (
+        <FinanceiroCliente cliente={cliente} financeiro={financeiro} setFinanceiro={setFinanceiro} addToast={addToast}/>
+      )}
+
+      {/* ── Suporte ── */}
+      {tab==='suporte' && (
+        <ChatSuporteAdmin cnpj={cliente.cnpj} nomeCliente={cliente.nome} mensagens={cliMsgs} setMensagens={setMensagens} addToast={addToast}/>
+      )}
+    </div>
+  );
+}
+
+/* ══ FINANCEIRO (global) ══ */
+function Financeiro({clientes,financeiro,setFinanceiro,addToast,onOpenCliente}){
+  const [showModal,setShowModal]=useState(false);
+  const [filter,setFilter]=useState('todos');
+
+  const filtered=filter==='todos'?financeiro:financeiro.filter(f=>f.status===filter);
+
+  const markPago=async(id)=>{
+    const hoje=new Date().toISOString().slice(0,10);
+    try{
+      await sb.from('financeiro').update({status:'pago',data_pagamento:hoje}).eq('id',id);
+      setFinanceiro(p=>p.map(f=>f.id===id?{...f,status:'pago',data_pagamento:hoje}:f));
+      addToast('Pagamento registrado!');
+    }catch{addToast('Erro ao registrar pagamento','error');}
+  };
+
+  const total=financeiro.filter(f=>f.status==='pago').reduce((s,f)=>s+Number(f.valor),0);
+  const pendente=financeiro.filter(f=>f.status==='pendente').reduce((s,f)=>s+Number(f.valor),0);
+  const vencido=financeiro.filter(f=>f.status==='vencido').reduce((s,f)=>s+Number(f.valor),0);
+  const fmt=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+  return(
+    <div>
+      <div className="metrics-row" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
+        <div className="metric-card green"><div className="metric-label">Recebido</div><div className="metric-val">{fmt(total)}</div></div>
+        <div className="metric-card yellow"><div className="metric-label">A receber</div><div className="metric-val">{fmt(pendente)}</div></div>
+        <div className="metric-card red"><div className="metric-label">Vencido</div><div className="metric-val">{fmt(vencido)}</div></div>
+      </div>
+
+      <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        {['todos','pago','pendente','vencido'].map(f=>(
+          <button key={f} className={`btn ${filter===f?'primary':''}`} onClick={()=>setFilter(f)} style={{textTransform:'capitalize'}}>{f==='todos'?'Todos':f}</button>
+        ))}
+        <button className="btn primary" style={{marginLeft:'auto'}} onClick={()=>setShowModal(true)}><IcoPlus/>Nova cobrança</button>
+      </div>
+
+      <div className="card">
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Pagamento</th><th>Status</th><th>Ação</th></tr></thead>
+            <tbody>
+              {filtered.map(f=>{
+                const cli=clientes.find(c=>c.cnpj===f.cnpj);
+                const venc=new Date(f.vencimento+'T00:00');
+                return(
+                  <tr key={f.id} style={{cursor:'pointer'}} onClick={()=>cli&&onOpenCliente&&onOpenCliente(cli)}>
+                    <td>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <div style={{width:26,height:26,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:'var(--green-bright)',flexShrink:0}}>
+                          {cli?.initials||(cli?.nome?.slice(0,2).toUpperCase())||'?'}
+                        </div>
+                        <span style={{fontWeight:500}}>{cli?.nome||f.cnpj}</span>
+                      </div>
+                    </td>
+                    <td style={{fontSize:12,color:'var(--text2)'}}>{f.descricao}</td>
+                    <td style={{fontWeight:600}}>R$ {Number(f.valor).toFixed(2)}</td>
+                    <td style={{fontSize:12}}>{venc.toLocaleDateString('pt-BR')}</td>
+                    <td style={{fontSize:12,color:'var(--text3)'}}>{f.data_pagamento?new Date(f.data_pagamento+'T00:00').toLocaleDateString('pt-BR'):'—'}</td>
+                    <td>
+                      <span className={`badge ${f.status==='pago'?'badge-green':f.status==='vencido'?'badge-red':'badge-yellow'}`}>
+                        {f.status==='pago'?'Pago':f.status==='vencido'?'Vencido':'Pendente'}
+                      </span>
+                    </td>
+                    <td onClick={e=>e.stopPropagation()}>
+                      {f.status!=='pago' && <button className="btn sm primary" onClick={()=>markPago(f.id)}><IcoCheck/>Marcar pago</button>}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length===0 && <tr><td colSpan={7} style={{textAlign:'center',color:'var(--text3)',padding:32}}>Nenhum registro</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showModal && <FinanceiroModal clientes={clientes} onClose={()=>setShowModal(false)} onSave={async(form)=>{
+        try{const{data,error}=await sb.from('financeiro').insert([form]).select().single();if(error)throw error;setFinanceiro(p=>[data,...p]);addToast('Cobrança criada!');}catch{addToast('Erro ao criar cobrança','error');}
+        setShowModal(false);
+      }}/>}
+    </div>
+  );
+}
+
+function FinanceiroModal({clientes,onClose,onSave}){
+  const [form,setForm]=useState({cnpj:'',descricao:'Plano Atende+Zap',valor:197,vencimento:new Date().toISOString().slice(0,10),status:'pendente'});
+  const up=(k,v)=>setForm(p=>({...p,[k]:v}));
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h3>Nova cobrança</h3>
+        <div className="form-field"><label>Cliente</label>
+          <select value={form.cnpj} onChange={e=>up('cnpj',e.target.value)}>
+            <option value="">Selecione...</option>
+            {clientes.map(c=><option key={c.id} value={c.cnpj}>{c.nome}</option>)}
+          </select>
+        </div>
+        <div className="form-grid">
+          <div className="form-field"><label>Descrição</label><input value={form.descricao} onChange={e=>up('descricao',e.target.value)}/></div>
+          <div className="form-field"><label>Valor (R$)</label><input type="number" value={form.valor} onChange={e=>up('valor',e.target.value)}/></div>
+          <div className="form-field"><label>Vencimento</label><input type="date" value={form.vencimento} onChange={e=>up('vencimento',e.target.value)}/></div>
+          <div className="form-field"><label>Status</label>
+            <select value={form.status} onChange={e=>up('status',e.target.value)}>
+              <option value="pendente">Pendente</option><option value="pago">Pago</option><option value="vencido">Vencido</option>
+            </select>
+          </div>
+        </div>
+        <div className="modal-actions">
+          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn primary" onClick={()=>onSave(form)}>Salvar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Financeiro por cliente */
+function FinanceiroCliente({cliente,financeiro,setFinanceiro,addToast}){
+  const clisFin=financeiro.filter(f=>f.cnpj===cliente.cnpj);
+
+  const markPago=async(id)=>{
+    const hoje=new Date().toISOString().slice(0,10);
+    try{
+      await sb.from('financeiro').update({status:'pago',data_pagamento:hoje}).eq('id',id);
+      setFinanceiro(p=>p.map(f=>f.id===id?{...f,status:'pago',data_pagamento:hoje}:f));
+      addToast('Pagamento registrado!');
+    }catch{addToast('Erro','error');}
+  };
+
+  const adicionarCobranca=async()=>{
+    const venc=new Date(); venc.setDate(venc.getDate()+30);
+    const form={cnpj:cliente.cnpj,descricao:'Plano Atende+Zap',valor:197,vencimento:venc.toISOString().slice(0,10),status:'pendente'};
+    try{
+      const{data,error}=await sb.from('financeiro').insert([form]).select().single();
+      if(error) throw error;
+      setFinanceiro(p=>[data,...p]);
+      addToast('Cobrança criada!');
+    }catch{addToast('Erro','error');}
+  };
+
+  const fmt=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:14}}>
+        <button className="btn primary" onClick={adicionarCobranca}><IcoPlus/>Adicionar cobrança</button>
+      </div>
+      <div className="card">
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Pagamento</th><th>Status</th><th>Ação</th></tr></thead>
+            <tbody>
+              {clisFin.map(f=>(
+                <tr key={f.id}>
+                  <td>{f.descricao}</td>
+                  <td style={{fontWeight:600}}>{fmt(f.valor)}</td>
+                  <td style={{fontSize:12}}>{new Date(f.vencimento+'T00:00').toLocaleDateString('pt-BR')}</td>
+                  <td style={{fontSize:12,color:'var(--text3)'}}>{f.data_pagamento?new Date(f.data_pagamento+'T00:00').toLocaleDateString('pt-BR'):'—'}</td>
+                  <td><span className={`badge ${f.status==='pago'?'badge-green':f.status==='vencido'?'badge-red':'badge-yellow'}`}>{f.status==='pago'?'Pago':f.status==='vencido'?'Vencido':'Pendente'}</span></td>
+                  <td>{f.status!=='pago'&&<button className="btn sm primary" onClick={()=>markPago(f.id)}><IcoCheck/>Pago</button>}</td>
+                </tr>
+              ))}
+              {clisFin.length===0 && <tr><td colSpan={6} style={{textAlign:'center',color:'var(--text3)',padding:24}}>Sem cobranças cadastradas</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══ SUPORTE GLOBAL ══ */
+function Suporte({mensagens,setMensagens,clientes,addToast,onOpenCliente}){
+  const [selectedCNPJ,setSelectedCNPJ]=useState(null);
+
+  /* Conversas agrupadas */
+  const conversas=clientes.map(c=>{
+    const msgs=mensagens.filter(m=>m.cnpj===c.cnpj);
+    const last=msgs.at(-1);
+    const unread=msgs.filter(m=>m.remetente==='cliente'&&!m.lido_admin).length;
+    return{...c,msgs,last,unread};
+  }).filter(c=>c.msgs.length>0).sort((a,b)=>new Date(b.last?.created_at||0)-new Date(a.last?.created_at||0));
+
+  const selCli=clientes.find(c=>c.cnpj===selectedCNPJ);
+  const selMsgs=mensagens.filter(m=>m.cnpj===selectedCNPJ).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+
+  return(
+    <div style={{display:'grid',gridTemplateColumns:'280px 1fr',gap:0,height:'calc(100vh - 120px)',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
+      {/* Lista de conversas */}
+      <div style={{borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',background:'var(--bg3)'}}>
+          <div style={{fontSize:13,fontWeight:700,fontFamily:'Sora'}}>Conversas</div>
+          <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{conversas.length} clientes</div>
+        </div>
+        <div style={{flex:1,overflowY:'auto'}}>
+          {conversas.length===0 && <div style={{padding:24,textAlign:'center',color:'var(--text3)',fontSize:13}}>Nenhuma conversa ainda</div>}
+          {conversas.map(c=>(
+            <div key={c.cnpj} onClick={()=>setSelectedCNPJ(c.cnpj)}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:selectedCNPJ===c.cnpj?'rgba(46,160,67,0.08)':'transparent',transition:'background .12s'}}>
+              <div style={{width:36,height:36,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'var(--green-bright)',flexShrink:0}}>
+                {c.initials||(c.nome?.slice(0,2).toUpperCase())}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.nome}</div>
+                <div style={{fontSize:11,color:'var(--text3)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginTop:1}}>{c.last?.mensagem}</div>
+              </div>
+              {c.unread>0 && <span style={{background:'var(--green)',color:'#fff',fontSize:10,fontWeight:700,width:18,height:18,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{c.unread}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Chat */}
+      {selectedCNPJ && selCli
+        ?<div style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          {/* Botão para abrir painel completo do cliente */}
+          <div style={{padding:'8px 14px',background:'var(--bg3)',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span style={{fontSize:12,color:'var(--text3)'}}>Conversa com <strong style={{color:'var(--text)'}}>{selCli.nome}</strong></span>
+            <button className="btn sm" onClick={()=>onOpenCliente&&onOpenCliente(selCli)}>
+              Ver painel completo →
+            </button>
+          </div>
+          <ChatSuporteAdmin cnpj={selectedCNPJ} nomeCliente={selCli.nome} mensagens={selMsgs} setMensagens={setMensagens} addToast={addToast} fullHeight/>
+        </div>
+        :<div style={{display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)',fontSize:14,gap:10}}>
+          <IcoChat/> Selecione uma conversa
+        </div>
+      }
+    </div>
+  );
+}
+
+/* ══ CHAT ADMIN ══ */
+function ChatSuporteAdmin({cnpj,nomeCliente,mensagens,setMensagens,addToast,fullHeight}){
+  const [texto,setTexto]=useState('');
+  const [enviando,setEnviando]=useState(false);
+  const bottomRef=useRef(null);
+  const inputRef=useRef(null);
+  const pendingRef=useRef(new Set());
+
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[mensagens]);
+
+  const enviar=async()=>{
+    const txt=texto.trim(); if(!txt||enviando) return;
+    setTexto(''); setEnviando(true);
+
+    // Adiciona otimisticamente com flag _temp
+    const tempId=`temp_${Date.now()}`;
+    const tempMsg={_temp:true,id:tempId,cnpj,remetente:'suporte',nome_remetente:'Suporte Atende+Zap',mensagem:txt,created_at:new Date().toISOString(),lido_admin:true};
+    setMensagens(p=>[...p,tempMsg]);
+    pendingRef.current.add(txt+'suporte');
+
+    try{
+      const {data,error}=await sb.from('suporte_mensagens').insert([{cnpj,remetente:'suporte',nome_remetente:'Suporte Atende+Zap',mensagem:txt,lido_admin:true}]).select().single();
+      if(!error && data){
+        // Substitui msg temp pelo registro real
+        setMensagens(p=>p.map(m=>m.id===tempId?data:m));
+        pendingRef.current.delete(txt+'suporte');
+      }
+    }catch{
+      setMensagens(p=>p.filter(m=>m.id!==tempId));
+      pendingRef.current.delete(txt+'suporte');
+      addToast('Erro ao enviar','error');
+    }
+    setEnviando(false); inputRef.current?.focus();
+  };
+
+  const handleKey=(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}};
+  const formatTime=(iso)=>{if(!iso)return'';return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});};
+  const initials=(nome)=>nome?.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()||'?';
+
+  const wrapStyle=fullHeight?{height:'100%',display:'flex',flexDirection:'column'}:{};
+
+  return(
+    <div className="chat-wrap" style={wrapStyle}>
+      {/* Header */}
+      <div style={{padding:'10px 16px',borderBottom:'1px solid var(--border)',background:'var(--bg2)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div style={{width:34,height:34,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'var(--green-bright)',flexShrink:0}}>
+          {initials(nomeCliente)}
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{nomeCliente}</div>
+          <div style={{fontSize:11,color:'var(--text3)'}}>Chat de suporte</div>
+        </div>
+      </div>
+
+      {/* Mensagens */}
+      <div className="chat-msgs">
+        {mensagens.length===0 && (
+          <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:24}}>Nenhuma mensagem ainda</div>
+        )}
+        {mensagens.map(m=>{
+          const isAdmin=m.remetente==='suporte';
+          return(
+            <div key={m.id} style={{display:'flex',flexDirection:'column',alignItems:isAdmin?'flex-end':'flex-start',marginBottom:4}}>
+              {!isAdmin && <span style={{fontSize:10,color:'var(--text3)',marginLeft:8,marginBottom:2}}>{nomeCliente}</span>}
+              <div style={{display:'flex',alignItems:'flex-end',gap:6,flexDirection:isAdmin?'row-reverse':'row'}}>
+                {/* Avatar */}
+                <div style={{width:26,height:26,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:'#fff',flexShrink:0,marginBottom:2,background:isAdmin?'var(--green-bright)':'rgba(56,139,253,0.6)'}}>
+                  {isAdmin?'SP':initials(nomeCliente)}
+                </div>
+                {/* Balão */}
+                <div style={{
+                  maxWidth:'68%',padding:'9px 13px',borderRadius:16,fontSize:13,lineHeight:1.55,wordBreak:'break-word',
+                  background:isAdmin?'rgba(46,160,67,0.15)':'var(--bg3)',
+                  border:`1px solid ${isAdmin?'rgba(63,185,80,0.25)':'var(--border)'}`,
+                  color:'var(--text)',
+                  borderBottomRightRadius:isAdmin?3:16,
+                  borderBottomLeftRadius:isAdmin?16:3,
+                  opacity:m._temp?0.65:1,
+                }}>
+                  {m.mensagem}
+                  <div style={{fontSize:10,marginTop:4,textAlign:'right',color:'var(--text3)',display:'flex',alignItems:'center',justifyContent:'flex-end',gap:3}}>
+                    {formatTime(m.created_at)}
+                    {isAdmin && <span style={{fontSize:11}}>{m._temp?'⏳':'✓'}</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef}/>
+      </div>
+
+      {/* Input */}
+      <div className="chat-input-row">
+        <textarea ref={inputRef} className="chat-input" rows={1}
+          placeholder="Digite a resposta... (Enter para enviar, Shift+Enter para nova linha)"
+          value={texto} onChange={e=>setTexto(e.target.value)} onKeyDown={handleKey}/>
+        <button className="chat-send" onClick={enviar} disabled={!texto.trim()||enviando}><IcoSend/></button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Render ── */
+window.addEventListener('error', function(e){
+  document.getElementById('root').innerHTML = '<div style="color:red;padding:20px;font-family:monospace;background:#1a1a1a;min-height:100vh"><h2>Erro de carregamento</h2><pre>'+e.message+'</pre><p>Arquivo: '+e.filename+'</p><p>Linha: '+e.lineno+'</p></div>';
+});
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
