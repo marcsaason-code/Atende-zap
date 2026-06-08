@@ -4,10 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Atende +Zap</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -44,11 +44,12 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeInPage { from { opacity: 0; } to { opacity: 1; } }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-  .fade-in { animation: fadeIn 0.3s ease both; }
+  .fade-in { animation: fadeIn 0.15s ease both; }
 
   /* Login */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 50%, #f8fafc 100%); position: relative; overflow: hidden; }
@@ -114,7 +115,7 @@
   .topbar h2 { font-size: 18px; font-weight: 600; color: var(--text); white-space: nowrap; }
   .mobile-menu-btn { display: none; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg2); align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
   .mobile-menu-btn:hover { background: var(--bg3); }
-  .page-content { flex: 1; overflow-y: auto; padding: 24px; }
+  .page-content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; }
 
   /* Responsive breakpoints */
   @media (max-width: 900px) {
@@ -411,7 +412,7 @@
   @keyframes typingPulse { 0%,60%,100% { transform: translateY(0); opacity:.4; } 30% { transform: translateY(-4px); opacity:1; } }
 
   /* ── WhatsApp Mirror ── */
-  .wa-mirror { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 65px); margin: -24px; overflow: hidden; }
+  .wa-mirror { display: grid; grid-template-columns: 300px 1fr; height: 100%; overflow: hidden; }
   .wa-sidebar { background: #fff; border-right: 1px solid #e9edef; display: flex; flex-direction: column; overflow: hidden; }
   .wa-sidebar-header { padding: 12px 16px; background: #f0f2f5; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
   .wa-search { padding: 8px 12px; background: #f0f2f5; flex-shrink: 0; }
@@ -458,7 +459,7 @@
   .wa-status-bar { background: #25d366; color: #fff; font-size: 12px; font-weight: 600; padding: 5px 16px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; z-index: 1; }
   .wa-readonly { background: #fff8e1; color: #7c5e00; font-size: 11px; padding: 4px 12px; text-align: center; flex-shrink: 0; z-index: 1; border-bottom: 1px solid #ffe082; }
   .wa-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #667781; background: #f0f2f5; }
-  @media(max-width:768px){ .wa-mirror { grid-template-columns: 1fr; margin: -16px; } }
+  @media(max-width:768px){ .wa-mirror { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -622,12 +623,12 @@ function App() {
       />
       <div className="main">
         <Topbar page={page} waStatus={waStatus} onMenuClick={toggleSidebar} />
-        <div className="page-content fade-in" key={page}>
-          {page === 'dashboard' && <Dashboard atendimentos={atendimentos} agendamentos={agendamentos} />}
-          {page === 'atendimentos' && <Atendimentos data={atendimentos} setData={setAtendimentos} addToast={addToast} agendamentos={agendamentos} setAgendamentos={setAgendamentos} user={user} />}
-          {page === 'agenda' && <Agenda data={agendamentos} setData={setAgendamentos} addToast={addToast} user={user} />}
-          {page === 'whatsapp' && <WhatsApp status={waStatus} setStatus={setWaStatus} user={user} addToast={addToast} />}
-          {page === 'suporte' && <Suporte user={user} addToast={addToast} />}
+        <div className={`page-content`} style={page==='whatsapp'?{padding:0,overflow:'hidden'}:{}}>
+          <div style={{display: page==='dashboard'?'block':'none'}}><Dashboard atendimentos={atendimentos} agendamentos={agendamentos} setPage={setPage} /></div>
+          <div style={{display: page==='atendimentos'?'block':'none'}}><Atendimentos data={atendimentos} setData={setAtendimentos} addToast={addToast} agendamentos={agendamentos} setAgendamentos={setAgendamentos} user={user} /></div>
+          <div style={{display: page==='agenda'?'block':'none'}}><Agenda data={agendamentos} setData={setAgendamentos} addToast={addToast} user={user} /></div>
+          <div style={{display: page==='whatsapp'?'block':'none', height: page==='whatsapp'?'100%':'0'}}><WhatsApp status={waStatus} user={user} addToast={addToast} /></div>
+          <div style={{display: page==='suporte'?'block':'none'}}><Suporte user={user} addToast={addToast} /></div>
         </div>
       </div>
       <ToastManager toasts={toasts} />
@@ -689,8 +690,7 @@ function LoginPage({ onLogin, addToast }) {
       </div>
       <div className="login-card fade-in">
         <div className="login-logo">
-          <div className="login-logo-icon"><IconWA /></div>
-          <div><h1 style={{display:'inline'}}>Atende </h1><span>+Zap</span></div>
+          <img src="./assets/logo.png" alt="Atende+Zap" style={{height:52,objectFit:'contain'}}/>
         </div>
         <p className="login-sub">Acesse sua plataforma de atendimento via WhatsApp com IA. Credenciais fornecidas pelo suporte.</p>
         <form onSubmit={handleLogin}>
@@ -739,8 +739,7 @@ function Sidebar({ page, setPage, user, onLogout, collapsed, mobileOpen, onToggl
       </button>
 
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon"><IconWA /></div>
-        <span>Atende <em>+Zap</em></span>
+        <img src="./assets/logo.png" alt="Atende+Zap" style={{height:30,objectFit:'contain',maxWidth:150}}/>
       </div>
 
       <nav className="sidebar-nav">
@@ -772,7 +771,7 @@ function Sidebar({ page, setPage, user, onLogout, collapsed, mobileOpen, onToggl
 }
 
 /* ═══ TOPBAR ═══ */
-const PAGE_LABELS = { dashboard: 'Dashboard', atendimentos: 'Atendimentos', agenda: 'Agenda', whatsapp: 'WhatsApp / Conectar', suporte: 'Suporte' };
+const PAGE_LABELS = { dashboard: 'Dashboard', atendimentos: 'Atendimentos', agenda: 'Agenda', whatsapp: 'Conversas WhatsApp', suporte: 'Suporte' };
 function Topbar({ page, waStatus, onMenuClick }) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
@@ -799,7 +798,7 @@ function Topbar({ page, waStatus, onMenuClick }) {
 }
 
 /* ═══ DASHBOARD ═══ */
-function Dashboard({ atendimentos, agendamentos }) {
+function Dashboard({ atendimentos, agendamentos, setPage }) {
   const hoje = new Date().toISOString().slice(0, 10);
   const total = atendimentos.length;
   const novos = atendimentos.filter(a => a.status === 'novo').length;
@@ -815,81 +814,79 @@ function Dashboard({ atendimentos, agendamentos }) {
   const IconCheck2 = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>;
   const IconLoader = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
   const IconCalSmall = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-  const IconStar = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
 
   const taxaResolucao = total > 0 ? Math.round((finalizados / total) * 100) : 0;
 
+  const cardStyle = { cursor: 'pointer', transition: 'box-shadow 0.18s, transform 0.18s' };
+  const cardHover = (e) => { e.currentTarget.style.boxShadow = 'var(--shadow)'; e.currentTarget.style.transform = 'translateY(-3px)'; };
+  const cardLeave = (e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.transform = 'translateY(-2px)'; };
+
   return (
     <div>
-      {/* Saudação */}
       <div className="dash-greeting">
         <h3>{saudacao}! 👋</h3>
         <p>Aqui está o resumo dos atendimentos de hoje.</p>
       </div>
 
-      {/* Cards principais */}
+      {/* Cards principais — todos clicáveis → Atendimentos */}
       <div className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-card-icon blue"><IconMsg /></div>
-          <div className="metric-label">Atendimentos hoje</div>
-          <div className="metric-value">{total}</div>
-          <div className="metric-sub">Total recebidos</div>
-          <span className="metric-trend up">+{total} hoje</span>
-        </div>
-        <div className="metric-card">
-          <div className="metric-card-icon warn"><IconLoader /></div>
-          <div className="metric-label">Em andamento</div>
-          <div className="metric-value">{atendendo}</div>
-          <div className="metric-sub">Aguardando resposta</div>
-          {atendendo > 0 && <span className="metric-trend warn">{atendendo} ativo{atendendo>1?'s':''}</span>}
-        </div>
-        <div className="metric-card">
-          <div className="metric-card-icon green"><IconCheck2 /></div>
-          <div className="metric-label">Finalizados</div>
-          <div className="metric-value">{finalizados}</div>
-          <div className="metric-sub">Taxa: {taxaResolucao}% de resolução</div>
-          <span className="metric-trend up">{taxaResolucao}% ✓</span>
-        </div>
-        <div className="metric-card">
-          <div className="metric-card-icon gray"><IconCalSmall /></div>
-          <div className="metric-label">Agend. confirmados</div>
-          <div className="metric-value">{agConcluidos}</div>
-          <div className="metric-sub">{agHoje.length} agendado{agHoje.length!==1?'s':''} para hoje</div>
-        </div>
+        {[
+          { icon: <IconMsg/>, cls:'blue', label:'Atendimentos hoje', val:total, sub:'Total recebidos', trend:`+${total} hoje`, trendCls:'up', page:'atendimentos' },
+          { icon: <IconLoader/>, cls:'warn', label:'Em andamento', val:atendendo, sub:'Aguardando resposta', trend:atendendo>0?`${atendendo} ativo${atendendo>1?'s':''}`:null, trendCls:'warn', page:'atendimentos' },
+          { icon: <IconCheck2/>, cls:'green', label:'Finalizados', val:finalizados, sub:`Taxa: ${taxaResolucao}% de resolução`, trend:`${taxaResolucao}% ✓`, trendCls:'up', page:'atendimentos' },
+          { icon: <IconCalSmall/>, cls:'gray', label:'Agend. confirmados', val:agConcluidos, sub:`${agHoje.length} agendado${agHoje.length!==1?'s':''} para hoje`, trend:null, page:'agenda' },
+        ].map((c,i) => (
+          <div key={i} className="metric-card" style={cardStyle}
+            onClick={() => setPage(c.page)}
+            onMouseEnter={cardHover} onMouseLeave={cardLeave}
+            title={`Ir para ${c.page}`}>
+            <div className={`metric-card-icon ${c.cls}`}>{c.icon}</div>
+            <div className="metric-label">{c.label}</div>
+            <div className="metric-value">{c.val}</div>
+            <div className="metric-sub">{c.sub}</div>
+            {c.trend && <span className={`metric-trend ${c.trendCls}`}>{c.trend}</span>}
+            <div style={{position:'absolute',bottom:12,right:14,fontSize:10,color:'var(--text3)',opacity:.6}}>→</div>
+          </div>
+        ))}
       </div>
 
-      {/* Barra de status rápido */}
+      {/* Barra de status — clicável → Atendimentos */}
       <div className="status-bar">
-        <div className="status-pill">
-          <span className="status-pill-dot dot-novo" />
-          <span className="status-pill-label">Novos</span>
-          <span className="status-pill-val">{novos}</span>
-        </div>
-        <div className="status-pill">
-          <span className="status-pill-dot dot-atendendo" />
-          <span className="status-pill-label">Em atendimento</span>
-          <span className="status-pill-val">{atendendo}</span>
-        </div>
-        <div className="status-pill">
-          <span className="status-pill-dot dot-finalizado" />
-          <span className="status-pill-label">Finalizados</span>
-          <span className="status-pill-val">{finalizados}</span>
-        </div>
+        {[
+          { dot:'dot-novo', label:'Novos', val:novos },
+          { dot:'dot-atendendo', label:'Em atendimento', val:atendendo },
+          { dot:'dot-finalizado', label:'Finalizados', val:finalizados },
+        ].map((p,i) => (
+          <div key={i} className="status-pill" style={{cursor:'pointer',transition:'background .15s'}}
+            onClick={() => setPage('atendimentos')}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--bg3)'}
+            onMouseLeave={e=>e.currentTarget.style.background=''}>
+            <span className={`status-pill-dot ${p.dot}`} />
+            <span className="status-pill-label">{p.label}</span>
+            <span className="status-pill-val">{p.val}</span>
+          </div>
+        ))}
       </div>
 
       {/* Grid inferior */}
       <div className="dash-bottom">
-        {/* Feed de atividades */}
+        {/* Feed de atividades — card e itens clicáveis */}
         <div className="dash-card">
           <div className="dash-card-header">
             <span className="dash-card-title">Atividade recente</span>
-            <span className="dash-card-link">Ver todos</span>
+            <button className="dash-card-link" onClick={() => setPage('atendimentos')}>Ver todos →</button>
           </div>
+          {atendimentos.length === 0 && (
+            <div style={{padding:'24px',textAlign:'center',color:'var(--text3)',fontSize:13}}>Nenhum atendimento ainda</div>
+          )}
           {atendimentos.slice(0, 5).map(a => {
             const initials = a.nome.split(' ').map(x=>x[0]).join('').slice(0,2);
             const avatarCls = a.status==='novo'?'blue':a.status==='atendendo'?'warn':'green';
             return (
-              <div key={a.id} className="activity-item">
+              <div key={a.id} className="activity-item" style={{cursor:'pointer'}}
+                onClick={() => setPage('atendimentos')}
+                onMouseEnter={e=>e.currentTarget.style.background='var(--bg3)'}
+                onMouseLeave={e=>e.currentTarget.style.background=''}>
                 <div className={`activity-avatar ${avatarCls}`}>{initials}</div>
                 <div className="activity-info">
                   <div className="activity-name">{a.nome}</div>
@@ -905,7 +902,7 @@ function Dashboard({ atendimentos, agendamentos }) {
           })}
         </div>
 
-        {/* Agenda do dia */}
+        {/* Agenda do dia — card e itens clicáveis */}
         <div className="dash-card">
           <div className="dash-card-header">
             <span className="dash-card-title">
@@ -914,16 +911,20 @@ function Dashboard({ atendimentos, agendamentos }) {
                 <span style={{marginLeft:8,background:'var(--blue-light)',color:'var(--blue)',fontSize:11,fontWeight:700,padding:'1px 7px',borderRadius:99}}>{agHoje.length}</span>
               )}
             </span>
-            <span className="dash-card-link">Ver agenda</span>
+            <button className="dash-card-link" onClick={() => setPage('agenda')}>Ver agenda →</button>
           </div>
           {agHoje.length === 0 ? (
-            <div style={{padding:'32px 20px',textAlign:'center',color:'var(--text3)',fontSize:13}}>
+            <div style={{padding:'32px 20px',textAlign:'center',color:'var(--text3)',fontSize:13,cursor:'pointer'}}
+              onClick={() => setPage('agenda')}>
               <div style={{fontSize:28,marginBottom:8}}>📅</div>
               Nenhum agendamento para hoje
             </div>
           ) : (
             agHoje.sort((a,b)=>a.hora.localeCompare(b.hora)).map(a => (
-              <div key={a.id} className="sched-item">
+              <div key={a.id} className="sched-item" style={{cursor:'pointer'}}
+                onClick={() => setPage('agenda')}
+                onMouseEnter={e=>e.currentTarget.style.background='var(--bg3)'}
+                onMouseLeave={e=>e.currentTarget.style.background=''}>
                 <div className="sched-time-box">
                   <div className="sched-time">{a.hora}</div>
                 </div>
@@ -939,8 +940,11 @@ function Dashboard({ atendimentos, agendamentos }) {
             ))
           )}
 
-          {/* Mini resumo no rodapé */}
-          <div style={{padding:'12px 20px',borderTop:'1px solid var(--border)',background:'var(--bg3)',display:'flex',gap:16}}>
+          {/* Rodapé clicável → agenda */}
+          <div style={{padding:'12px 20px',borderTop:'1px solid var(--border)',background:'var(--bg3)',display:'flex',gap:16,cursor:'pointer'}}
+            onClick={() => setPage('agenda')}
+            onMouseEnter={e=>e.currentTarget.style.opacity='.8'}
+            onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
             {[['Confirmados', agendamentos.filter(x=>x.status==='confirmado').length, 'var(--green-dark)'],
               ['Pendentes', agendamentos.filter(x=>x.status==='pendente').length, 'var(--warn)'],
               ['Cancelados', agendamentos.filter(x=>x.status==='cancelado').length, 'var(--danger)']].map(([l,v,c])=>(
@@ -1612,7 +1616,7 @@ function Suporte({ user, addToast }) {
   const [online, setOnline] = useState(true);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
-  const channelRef = useRef(null);
+  const pendingRef = useRef(new Set()); // rastreia msgs enviadas por mim aguardando Realtime
 
   const cnpj = user?.cnpj || '';
 
@@ -1639,19 +1643,27 @@ function Suporte({ user, addToast }) {
         table: 'suporte_mensagens',
         filter: `cnpj=eq.${cnpj}`
       }, payload => {
-        setMsgs(p => {
-          if (p.find(m => m.id === payload.new.id)) return p;
-          return [...p, payload.new];
-        });
+        const nova = payload.new;
+        // Se essa mensagem foi enviada por mim (está no pendingRef), ignora — já está no estado
+        if (pendingRef.current.has(nova.mensagem + nova.remetente)) {
+          pendingRef.current.delete(nova.mensagem + nova.remetente);
+          // Substitui a msg temporária pelo registro real (com id real do banco)
+          setMsgs(p => {
+            const idx = p.findIndex(m => m._temp && m.mensagem === nova.mensagem && m.remetente === nova.remetente);
+            if (idx === -1) return p;
+            const updated = [...p];
+            updated[idx] = nova;
+            return updated;
+          });
+          return;
+        }
+        // Mensagem de outra origem (suporte respondendo) — adiciona normalmente
+        setMsgs(p => p.some(m => m.id === nova.id) ? p : [...p, nova]);
       })
-      .subscribe(status => {
-        setOnline(status === 'SUBSCRIBED');
-      });
-    channelRef.current = channel;
+      .subscribe(status => { setOnline(status === 'SUBSCRIBED'); });
     return () => { sb.removeChannel(channel); };
   }, [cnpj, loadMsgs]);
 
-  /* Scroll para o fim */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgs]);
@@ -1661,15 +1673,21 @@ function Suporte({ user, addToast }) {
     if (!txt || enviando) return;
     setTexto('');
     setEnviando(true);
-    const nova = {
+
+    // Adiciona otimisticamente com flag _temp
+    const tempMsg = {
+      _temp: true,
+      id: `temp_${Date.now()}`,
       cnpj,
       remetente: 'cliente',
       nome_remetente: user?.nome || 'Cliente',
       mensagem: txt,
       created_at: new Date().toISOString(),
-      id: Date.now(), // temp id
     };
-    setMsgs(p => [...p, nova]);
+    setMsgs(p => [...p, tempMsg]);
+    // Registra no pendingRef para o Realtime não duplicar
+    pendingRef.current.add(txt + 'cliente');
+
     try {
       await sb.from('suporte_mensagens').insert([{
         cnpj,
@@ -1677,7 +1695,12 @@ function Suporte({ user, addToast }) {
         nome_remetente: user?.nome || 'Cliente',
         mensagem: txt,
       }]);
-    } catch { addToast('Erro ao enviar mensagem', 'error'); }
+    } catch {
+      // Se falhou, remove a msg temporária e limpa o pending
+      setMsgs(p => p.filter(m => m.id !== tempMsg.id));
+      pendingRef.current.delete(txt + 'cliente');
+      addToast('Erro ao enviar mensagem', 'error');
+    }
     setEnviando(false);
     inputRef.current?.focus();
   };
@@ -1688,8 +1711,7 @@ function Suporte({ user, addToast }) {
 
   const formatTime = (iso) => {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (iso) => {
@@ -1712,6 +1734,7 @@ function Suporte({ user, addToast }) {
   });
 
   const initials = (nome) => nome?.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase() || 'S';
+  const isMe = (m) => m.remetente === 'cliente';
 
   return (
     <div className="suporte-layout">
@@ -1722,7 +1745,6 @@ function Suporte({ user, addToast }) {
           <p>Atendimento exclusivo para clientes</p>
         </div>
 
-        {/* Card da conversa */}
         <div className="suporte-status-item active">
           <div className="suporte-status-avatar">SP</div>
           <div className="suporte-status-info">
@@ -1733,13 +1755,9 @@ function Suporte({ user, addToast }) {
           </div>
           <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
             {msgs.length > 0 && <span className="suporte-status-time">{formatTime(msgs[msgs.length-1].created_at)}</span>}
-            {msgs.filter(m=>m.remetente==='suporte' && !m.lido).length > 0 && (
-              <span className="suporte-unread">{msgs.filter(m=>m.remetente==='suporte' && !m.lido).length}</span>
-            )}
           </div>
         </div>
 
-        {/* Info do cliente */}
         <div style={{padding:'16px',marginTop:'auto',borderTop:'1px solid var(--border)',background:'var(--bg3)'}}>
           <div style={{fontSize:11,color:'var(--text3)',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.05em',fontWeight:600}}>Sua conta</div>
           <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{user?.nome}</div>
@@ -1753,7 +1771,6 @@ function Suporte({ user, addToast }) {
 
       {/* Área do chat */}
       <div className="chat-area">
-        {/* Topbar do chat */}
         <div className="chat-topbar">
           <div className="chat-topbar-avatar">SP</div>
           <div className="chat-topbar-info">
@@ -1768,7 +1785,6 @@ function Suporte({ user, addToast }) {
           </div>
         </div>
 
-        {/* Mensagens */}
         <div className="chat-messages">
           {loading && (
             <div style={{display:'flex',alignItems:'center',justifyContent:'center',flex:1,gap:10,color:'var(--text3)',fontSize:13}}>
@@ -1781,7 +1797,6 @@ function Suporte({ user, addToast }) {
               <IconChat />
               <p style={{fontSize:14,fontWeight:500}}>Nenhuma mensagem ainda</p>
               <p style={{fontSize:13}}>Envie uma mensagem para nossa equipe de suporte</p>
-              {/* Mensagem de boas-vindas automática */}
               <div style={{marginTop:20,background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:14,padding:'14px 18px',maxWidth:360,textAlign:'left',boxShadow:'var(--shadow-sm)'}}>
                 <div style={{fontSize:12,color:'var(--green-dark)',fontWeight:600,marginBottom:6}}>💬 Equipe Atende+Zap</div>
                 <div style={{fontSize:13.5,color:'var(--text)',lineHeight:1.6}}>
@@ -1796,15 +1811,33 @@ function Suporte({ user, addToast }) {
             if (item.type === 'divider') {
               return <div key={`d${i}`} className="chat-date-divider">{item.label}</div>;
             }
-            const isCliente = item.remetente === 'cliente';
+            const mine = isMe(item);
             return (
-              <div key={item.id} className={`chat-bubble-wrap ${isCliente ? 'mine' : ''}`}>
-                <div className={`bubble-avatar ${isCliente ? 'cliente' : 'suporte'}`}>
-                  {isCliente ? initials(user?.nome) : 'SP'}
-                </div>
-                <div className={`chat-bubble ${isCliente ? 'suporte' : 'cliente'}`}>
-                  {item.mensagem}
-                  <div className="bubble-time">{formatTime(item.created_at)}</div>
+              <div key={item.id} style={{display:'flex',flexDirection:'column',alignItems: mine ? 'flex-end' : 'flex-start',marginBottom:2}}>
+                {/* Nome do remetente (só para mensagens do suporte) */}
+                {!mine && <span style={{fontSize:11,color:'var(--text3)',marginLeft:8,marginBottom:2}}>Suporte</span>}
+                <div style={{display:'flex',alignItems:'flex-end',gap:6,flexDirection: mine ? 'row-reverse' : 'row'}}>
+                  {/* Avatar */}
+                  <div style={{width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:'#fff',flexShrink:0,background: mine ? 'var(--blue)' : 'var(--green)',marginBottom:4}}>
+                    {mine ? initials(user?.nome) : 'SP'}
+                  </div>
+                  {/* Balão */}
+                  <div style={{
+                    maxWidth:'65%',padding:'9px 13px',borderRadius:16,fontSize:13.5,lineHeight:1.55,wordBreak:'break-word',
+                    background: mine ? 'var(--green)' : 'var(--bg2)',
+                    color: mine ? '#fff' : 'var(--text)',
+                    border: mine ? 'none' : '1px solid var(--border)',
+                    borderBottomRightRadius: mine ? 4 : 16,
+                    borderBottomLeftRadius: mine ? 16 : 4,
+                    boxShadow: 'var(--shadow-sm)',
+                    opacity: item._temp ? 0.7 : 1,
+                  }}>
+                    {item.mensagem}
+                    <div style={{fontSize:10,marginTop:4,textAlign:'right',opacity:.7,color: mine ? 'rgba(255,255,255,0.8)' : 'var(--text3)',display:'flex',alignItems:'center',justifyContent:'flex-end',gap:3}}>
+                      {formatTime(item.created_at)}
+                      {mine && <span style={{fontSize:12}}>{item._temp ? '⏳' : '✓'}</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -1832,6 +1865,8 @@ function Suporte({ user, addToast }) {
       </div>
     </div>
   );
+
+
 }
 
 /* ─── Render ─── */
