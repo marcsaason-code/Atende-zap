@@ -180,7 +180,7 @@ tr[style*="cursor"]:hover td{background:rgba(46,160,67,0.05)!important;}
 /* ── Chat suporte ── */
 .chat-wrap{display:flex;flex-direction:column;height:460px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
 .chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-.chat-bubble{max-width:70%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word}
+.chat-bubble{max-width:85%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word}
 .chat-bubble.admin{background:rgba(46,160,67,0.15);border:1px solid rgba(46,160,67,0.2);color:var(--text);align-self:flex-end;border-bottom-right-radius:3px}
 .chat-bubble.cliente{background:var(--bg2);border:1px solid var(--border);color:var(--text);align-self:flex-start;border-bottom-left-radius:3px}
 .bubble-meta{font-size:10px;color:var(--text3);margin-top:3px}
@@ -253,7 +253,9 @@ function ToastMgr({toasts}){
    APP
 ══════════════════════════════════════════ */
 function App(){
-  const [admin,setAdmin]=useState(null);
+  const [admin,setAdmin]=useState(()=>{
+    try{ return JSON.parse(localStorage.getItem('atende_admin')||'null'); }catch{ return null; }
+  });
   const [page,setPage]=useState('dashboard');
   const [toasts,setToasts]=useState([]);
   const [clientes,setClientes]=useState([]);
@@ -261,7 +263,8 @@ function App(){
   const [mensagens,setMensagens]=useState([]);
   const [loadingData,setLoadingData]=useState(false);
   const [selectedCliente,setSelectedCliente]=useState(null);
-  const [sidebarOpen,setSidebarOpen]=useState(false);
+  const [novoClienteOpen, setNovoClienteOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const addToast=useCallback((msg,type='success')=>{
     const id=Date.now();
@@ -269,24 +272,54 @@ function App(){
     setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3500);
   },[]);
 
-  const loadAll=useCallback(async()=>{
-    setLoadingData(true);
+  const loadAll=useCallback(async(silent=false)=>{
+    if(!silent) setLoadingData(true);
     try{
       const [{data:cls},{data:fin},{data:msgs}]=await Promise.all([
         sb.from('usuarios').select('*').order('created_at',{ascending:false}),
         sb.from('financeiro').select('*').order('vencimento',{ascending:true}),
         sb.from('suporte_mensagens').select('*').order('created_at',{ascending:false}).limit(200),
       ]);
-      if(cls) setClientes(cls);
-      if(fin) setFinanceiro(fin);
-      if(msgs) setMensagens(msgs);
-    }catch(e){addToast('Erro ao carregar dados','error');}
-    setLoadingData(false);
+      if(cls) setClientes(prev=>{
+        const ps=JSON.stringify(prev.map(c=>c.id));
+        const ns=JSON.stringify(cls.map(c=>c.id));
+        return ps===ns?prev:cls;
+      });
+      if(fin) setFinanceiro(prev=>{
+        const ps=JSON.stringify(prev.map(f=>f.id+f.status));
+        const ns=JSON.stringify(fin.map(f=>f.id+f.status));
+        return ps===ns?prev:fin;
+      });
+      if(msgs) setMensagens(prev=>{
+        const ps=JSON.stringify(prev.map(m=>m.id));
+        const ns=JSON.stringify(msgs.map(m=>m.id));
+        return ps===ns?prev:msgs;
+      });
+    }catch(e){if(!silent) addToast('Erro ao carregar dados','error');}
+    if(!silent) setLoadingData(false);
   },[addToast]);
 
   useEffect(()=>{if(admin) loadAll();},[admin,loadAll]);
 
-  /* Realtime mensagens */
+  /* Realtime — clientes e financeiro */
+  useEffect(()=>{
+    if(!admin) return;
+    const ch=sb.channel('admin-realtime')
+      .on('postgres_changes',{event:'*',schema:'public',table:'usuarios'},payload=>{
+        if(payload.eventType==='INSERT') setClientes(p=>[payload.new,...p]);
+        else if(payload.eventType==='UPDATE') setClientes(p=>p.map(c=>c.id===payload.new.id?payload.new:c));
+        else if(payload.eventType==='DELETE') setClientes(p=>p.filter(c=>c.id!==payload.old.id));
+      })
+      .on('postgres_changes',{event:'*',schema:'public',table:'financeiro'},payload=>{
+        if(payload.eventType==='INSERT') setFinanceiro(p=>[...p,payload.new]);
+        else if(payload.eventType==='UPDATE') setFinanceiro(p=>p.map(f=>f.id===payload.new.id?payload.new:f));
+        else if(payload.eventType==='DELETE') setFinanceiro(p=>p.filter(f=>f.id!==payload.old.id));
+      })
+      .subscribe();
+    return()=>{sb.removeChannel(ch);};
+  },[admin]);
+
+  /* Realtime mensagens suporte */
   useEffect(()=>{
     if(!admin) return;
     const ch=sb.channel('admin-msgs')
@@ -303,9 +336,15 @@ function App(){
 
   const openCliente=(cli)=>{setSelectedCliente(cli);setPage('cliente');};
 
-  if(!admin) return <Login onLogin={setAdmin} />;
+  if(!admin) return <Login onLogin={(a)=>{ setAdmin(a); localStorage.setItem('atende_admin', JSON.stringify(a)); }} />;
 
   const PAGE_LABELS={dashboard:'Dashboard',clientes:'Clientes',financeiro:'Financeiro',suporte:'Suporte',cliente: selectedCliente?.nome||'Cliente'};
+
+  const handleLogout = () => {
+    setAdmin(null);
+    localStorage.removeItem('atende_admin');
+    setPage('dashboard');
+  };
 
   return(
     <div className="app">
@@ -313,7 +352,7 @@ function App(){
       {sidebarOpen && <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:39}} onClick={()=>setSidebarOpen(false)}/>}
 
       <Sidebar page={page} setPage={p=>{setPage(p);setSidebarOpen(false);}} admin={admin}
-        onLogout={()=>{setAdmin(null);setPage('dashboard');}}
+        onLogout={handleLogout}
         open={sidebarOpen}
         unreadCount={mensagens.filter(m=>m.remetente==='cliente' && !m.lido_admin).length}
       />
@@ -328,7 +367,7 @@ function App(){
           </div>
           <div className="topbar-right">
             <span style={{fontSize:12,color:'var(--text2)'}}>{new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'})}</span>
-            <button className="topbar-btn primary" onClick={()=>{setPage('clientes');}}>
+            <button className="topbar-btn primary" onClick={()=>setNovoClienteOpen(true)}>
               <IcoPlus/> Novo cliente
             </button>
           </div>
@@ -353,6 +392,28 @@ function App(){
         </div>
       </div>
       <ToastMgr toasts={toasts}/>
+
+      {/* Modal global de novo cliente — abre de qualquer página */}
+      {novoClienteOpen && (
+        <ClienteModal
+          item={null}
+          onClose={()=>setNovoClienteOpen(false)}
+          addToast={addToast}
+          onSave={async(form)=>{
+            try{
+              const{data,error}=await sb.from('usuarios').insert([form]).select().single();
+              if(error) throw error;
+              setClientes(p=>[data,...p]);
+              if(form.valor_plano){
+                const venc=new Date(); venc.setDate(venc.getDate()+30);
+                await sb.from('financeiro').insert([{cnpj:form.cnpj,descricao:'Plano Atende+Zap',valor:form.valor_plano,vencimento:venc.toISOString().slice(0,10),status:'pendente'}]);
+              }
+              addToast('Cliente cadastrado com sucesso!');
+            }catch(e){addToast(e.message||'Erro ao salvar','error');}
+            setNovoClienteOpen(false);
+          }}
+        />
+      )}
       <style>{`@media(max-width:900px){#mob-menu{display:flex!important}}`}</style>
     </div>
   );
@@ -604,13 +665,23 @@ function Clientes({clientes,setClientes,financeiro,setFinanceiro,addToast,onOpen
     setShowModal(false);setEditItem(null);
   };
 
+  const [confirmModal, setConfirmModal] = useState(null); // {msg, onOk}
+
   const deleteCliente=async(id)=>{
-    if(!confirm('Remover este cliente?')) return;
-    try{
-      await sb.from('usuarios').delete().eq('id',id);
-      setClientes(p=>p.filter(c=>c.id!==id));
-      addToast('Cliente removido.','info');
-    }catch{addToast('Erro ao remover','error');}
+    setConfirmModal({
+      msg: 'Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita.',
+      icon: '🗑️',
+      label: 'Remover cliente',
+      danger: true,
+      onOk: async () => {
+        try{
+          await sb.from('usuarios').delete().eq('id',id);
+          setClientes(p=>p.filter(c=>c.id!==id));
+          addToast('Cliente removido.','info');
+        }catch{addToast('Erro ao remover','error');}
+        setConfirmModal(null);
+      }
+    });
   };
 
   return(
@@ -666,6 +737,29 @@ function Clientes({clientes,setClientes,financeiro,setFinanceiro,addToast,onOpen
       </div>
 
       {showModal && <ClienteModal item={editItem} onClose={()=>{setShowModal(false);setEditItem(null);}} onSave={saveCliente} addToast={addToast}/>}
+      {confirmModal && <ConfirmModal {...confirmModal} onCancel={()=>setConfirmModal(null)}/>}
+    </div>
+  );
+}
+
+/* ══ CONFIRM MODAL ══ */
+function ConfirmModal({msg, icon, label, danger, onOk, onCancel}){
+  return(
+    <div className="overlay" onClick={onCancel}>
+      <div className="modal" style={{width:420,textAlign:'center'}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:48,marginBottom:12}}>{icon||'⚠️'}</div>
+        <h3 style={{marginBottom:12,fontSize:17}}>{label||'Confirmar ação'}</h3>
+        <p style={{fontSize:14,color:'var(--text2)',lineHeight:1.6,marginBottom:24}}>{msg}</p>
+        <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+          <button className="btn" style={{minWidth:100}} onClick={onCancel}>Cancelar</button>
+          <button
+            className="btn"
+            style={{minWidth:140,background:danger?'rgba(218,54,51,0.15)':'var(--green)',color:danger?'var(--red-light)':'#fff',border:`1px solid ${danger?'rgba(248,81,73,0.3)':'var(--green)'}`,fontWeight:600}}
+            onClick={onOk}>
+            {label||'Confirmar'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1247,6 +1341,23 @@ function FinanceiroCliente({cliente,financeiro,setFinanceiro,addToast}){
 function Suporte({mensagens,setMensagens,clientes,addToast,onOpenCliente}){
   const [selectedCNPJ,setSelectedCNPJ]=useState(null);
 
+  const selecionarConversa = async (cnpj) => {
+    setSelectedCNPJ(cnpj);
+    // Marca todas as mensagens não lidas do cliente como lidas
+    const naoLidas = mensagens.filter(m=>m.cnpj===cnpj && m.remetente==='cliente' && !m.lido_admin);
+    if(naoLidas.length === 0) return;
+    // Atualiza localmente imediatamente
+    setMensagens(p=>p.map(m=>m.cnpj===cnpj && m.remetente==='cliente' ? {...m, lido_admin:true} : m));
+    // Atualiza no banco
+    try {
+      await sb.from('suporte_mensagens')
+        .update({lido_admin:true})
+        .eq('cnpj', cnpj)
+        .eq('remetente','cliente')
+        .eq('lido_admin', false);
+    } catch {}
+  };
+
   /* Conversas agrupadas */
   const conversas=clientes.map(c=>{
     const msgs=mensagens.filter(m=>m.cnpj===c.cnpj);
@@ -1269,7 +1380,7 @@ function Suporte({mensagens,setMensagens,clientes,addToast,onOpenCliente}){
         <div style={{flex:1,overflowY:'auto'}}>
           {conversas.length===0 && <div style={{padding:24,textAlign:'center',color:'var(--text3)',fontSize:13}}>Nenhuma conversa ainda</div>}
           {conversas.map(c=>(
-            <div key={c.cnpj} onClick={()=>setSelectedCNPJ(c.cnpj)}
+            <div key={c.cnpj} onClick={()=>selecionarConversa(c.cnpj)}
               style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:selectedCNPJ===c.cnpj?'rgba(46,160,67,0.08)':'transparent',transition:'background .12s'}}>
               <div style={{width:36,height:36,borderRadius:'50%',background:'rgba(46,160,67,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'var(--green-bright)',flexShrink:0}}>
                 {c.initials||(c.nome?.slice(0,2).toUpperCase())}
@@ -1308,35 +1419,74 @@ function Suporte({mensagens,setMensagens,clientes,addToast,onOpenCliente}){
 function ChatSuporteAdmin({cnpj,nomeCliente,mensagens,setMensagens,addToast,fullHeight}){
   const [texto,setTexto]=useState('');
   const [enviando,setEnviando]=useState(false);
+  const [imgPreview,setImgPreview]=useState(null);
   const bottomRef=useRef(null);
   const inputRef=useRef(null);
+  const fileRef=useRef(null);
   const pendingRef=useRef(new Set());
 
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[mensagens]);
 
+  /* Comprime imagem */
+  const comprimirImagem=(file)=>new Promise((resolve)=>{
+    const reader=new FileReader();
+    reader.onload=(e)=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const MAX=1200; let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(resolve,'image/jpeg',0.82);
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const selecionarImagem=(e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    setImgPreview({file,url:URL.createObjectURL(file)});
+    e.target.value='';
+  };
+
+  const enviarImagem=async()=>{
+    if(!imgPreview||enviando) return;
+    setEnviando(true);
+    try{
+      const blob=await comprimirImagem(imgPreview.file);
+      const nome=`suporte/${cnpj}/${Date.now()}.jpg`;
+      const {error}=await sb.storage.from('Atende+zap').upload(nome,blob,{contentType:'image/jpeg',upsert:true});
+      if(error) throw error;
+      const {data:{publicUrl}}=sb.storage.from('Atende+zap').getPublicUrl(nome);
+      const tempId=`temp_${Date.now()}`;
+      setMensagens(p=>[...p,{_temp:true,id:tempId,cnpj,remetente:'suporte',nome_remetente:'Suporte Atende+Zap',mensagem:'📷 Imagem',midia_url:publicUrl,tipo:'imagem',created_at:new Date().toISOString(),lido_admin:true}]);
+      setImgPreview(null);
+      const {data}=await sb.from('suporte_mensagens').insert([{cnpj,remetente:'suporte',nome_remetente:'Suporte Atende+Zap',mensagem:'📷 Imagem',midia_url:publicUrl,tipo:'imagem',lido_admin:true}]).select().single();
+      if(data) setMensagens(p=>p.map(m=>m.id===tempId?data:m));
+    }catch{addToast('Erro ao enviar imagem','error');setImgPreview(null);}
+    setEnviando(false);inputRef.current?.focus();
+  };
+
   const enviar=async()=>{
+    if(imgPreview){enviarImagem();return;}
     const txt=texto.trim(); if(!txt||enviando) return;
     setTexto(''); setEnviando(true);
-
-    // Adiciona otimisticamente com flag _temp
     const tempId=`temp_${Date.now()}`;
     const tempMsg={_temp:true,id:tempId,cnpj,remetente:'suporte',nome_remetente:'Suporte Atende+Zap',mensagem:txt,created_at:new Date().toISOString(),lido_admin:true};
     setMensagens(p=>[...p,tempMsg]);
     pendingRef.current.add(txt+'suporte');
-
     try{
       const {data,error}=await sb.from('suporte_mensagens').insert([{cnpj,remetente:'suporte',nome_remetente:'Suporte Atende+Zap',mensagem:txt,lido_admin:true}]).select().single();
-      if(!error && data){
-        // Substitui msg temp pelo registro real
-        setMensagens(p=>p.map(m=>m.id===tempId?data:m));
-        pendingRef.current.delete(txt+'suporte');
-      }
+      if(!error&&data){setMensagens(p=>p.map(m=>m.id===tempId?data:m));pendingRef.current.delete(txt+'suporte');}
     }catch{
       setMensagens(p=>p.filter(m=>m.id!==tempId));
       pendingRef.current.delete(txt+'suporte');
       addToast('Erro ao enviar','error');
     }
-    setEnviando(false); inputRef.current?.focus();
+    setEnviando(false);inputRef.current?.focus();
   };
 
   const handleKey=(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}};
@@ -1360,33 +1510,24 @@ function ChatSuporteAdmin({cnpj,nomeCliente,mensagens,setMensagens,addToast,full
 
       {/* Mensagens */}
       <div className="chat-msgs">
-        {mensagens.length===0 && (
-          <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:24}}>Nenhuma mensagem ainda</div>
-        )}
+        {mensagens.length===0 && <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:24}}>Nenhuma mensagem ainda</div>}
         {mensagens.map(m=>{
           const isAdmin=m.remetente==='suporte';
           return(
             <div key={m.id} style={{display:'flex',flexDirection:'column',alignItems:isAdmin?'flex-end':'flex-start',marginBottom:4}}>
               {!isAdmin && <span style={{fontSize:10,color:'var(--text3)',marginLeft:8,marginBottom:2}}>{nomeCliente}</span>}
               <div style={{display:'flex',alignItems:'flex-end',gap:6,flexDirection:isAdmin?'row-reverse':'row'}}>
-                {/* Avatar */}
                 <div style={{width:26,height:26,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:'#fff',flexShrink:0,marginBottom:2,background:isAdmin?'var(--green-bright)':'rgba(56,139,253,0.6)'}}>
                   {isAdmin?'SP':initials(nomeCliente)}
                 </div>
-                {/* Balão */}
-                <div style={{
-                  maxWidth:'68%',padding:'9px 13px',borderRadius:16,fontSize:13,lineHeight:1.55,wordBreak:'break-word',
-                  background:isAdmin?'rgba(46,160,67,0.15)':'var(--bg3)',
-                  border:`1px solid ${isAdmin?'rgba(63,185,80,0.25)':'var(--border)'}`,
-                  color:'var(--text)',
-                  borderBottomRightRadius:isAdmin?3:16,
-                  borderBottomLeftRadius:isAdmin?16:3,
-                  opacity:m._temp?0.65:1,
-                }}>
-                  {m.mensagem}
+                <div style={{maxWidth:'85%',padding: m.tipo==='imagem'?'4px':'9px 13px',borderRadius:16,fontSize:13,lineHeight:1.55,wordBreak:'break-word',background:isAdmin?'rgba(46,160,67,0.15)':'var(--bg3)',border:`1px solid ${isAdmin?'rgba(63,185,80,0.25)':'var(--border)'}`,color:'var(--text)',borderBottomRightRadius:isAdmin?3:16,borderBottomLeftRadius:isAdmin?16:3,opacity:m._temp?0.65:1}}>
+                  {m.tipo==='imagem'&&m.midia_url
+                    ?<img src={m.midia_url} alt="imagem" style={{maxWidth:220,borderRadius:12,display:'block',cursor:'pointer'}} onClick={()=>window.open(m.midia_url,'_blank')}/>
+                    :<span>{m.mensagem}</span>
+                  }
                   <div style={{fontSize:10,marginTop:4,textAlign:'right',color:'var(--text3)',display:'flex',alignItems:'center',justifyContent:'flex-end',gap:3}}>
                     {formatTime(m.created_at)}
-                    {isAdmin && <span style={{fontSize:11}}>{m._temp?'⏳':'✓'}</span>}
+                    {isAdmin&&<span style={{fontSize:11}}>{m._temp?'⏳':'✓'}</span>}
                   </div>
                 </div>
               </div>
@@ -1397,11 +1538,30 @@ function ChatSuporteAdmin({cnpj,nomeCliente,mensagens,setMensagens,addToast,full
       </div>
 
       {/* Input */}
-      <div className="chat-input-row">
-        <textarea ref={inputRef} className="chat-input" rows={1}
-          placeholder="Digite a resposta... (Enter para enviar, Shift+Enter para nova linha)"
-          value={texto} onChange={e=>setTexto(e.target.value)} onKeyDown={handleKey}/>
-        <button className="chat-send" onClick={enviar} disabled={!texto.trim()||enviando}><IcoSend/></button>
+      <div className="chat-input-row" style={{flexDirection:'column',gap:8,alignItems:'stretch'}}>
+        {imgPreview&&(
+          <div style={{position:'relative',display:'inline-block'}}>
+            <img src={imgPreview.url} alt="preview" style={{maxWidth:160,maxHeight:100,borderRadius:8,display:'block',border:'1px solid var(--border)'}}/>
+            <button onClick={()=>setImgPreview(null)} style={{position:'absolute',top:-6,right:-6,width:20,height:20,borderRadius:'50%',background:'var(--red-light)',color:'#fff',border:'none',fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+          </div>
+        )}
+        <div style={{display:'flex',alignItems:'flex-end',gap:8}}>
+          <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={selecionarImagem}/>
+          <button onClick={()=>fileRef.current?.click()}
+            style={{width:34,height:34,borderRadius:'50%',border:'1px solid var(--border)',background:'var(--bg3)',color:'var(--text2)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,transition:'all .15s'}}
+            title="Enviar imagem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          <textarea ref={inputRef} className="chat-input" rows={1} style={{flex:1}}
+            placeholder="Digite a resposta... (Enter para enviar)"
+            value={texto} onChange={e=>setTexto(e.target.value)} onKeyDown={handleKey}/>
+          <button className="chat-send" onClick={enviar} disabled={(!texto.trim()&&!imgPreview)||enviando}>
+            {enviando
+              ?<div style={{width:14,height:14,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
+              :<IcoSend/>
+            }
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1409,9 +1569,33 @@ function ChatSuporteAdmin({cnpj,nomeCliente,mensagens,setMensagens,addToast,full
 
 /* ── Render ── */
 window.addEventListener('error', function(e){
-  document.getElementById('root').innerHTML = '<div style="color:red;padding:20px;font-family:monospace;background:#1a1a1a;min-height:100vh"><h2>Erro de carregamento</h2><pre>'+e.message+'</pre><p>Arquivo: '+e.filename+'</p><p>Linha: '+e.lineno+'</p></div>';
+  const msg = e.message || 'Script error';
+  const file = e.filename ? e.filename.split('/').pop() : 'CDN externo';
+  const line = e.lineno || 0;
+  const err = e.error ? (e.error.stack || e.error.toString()) : msg;
+  document.getElementById('root').innerHTML = 
+    '<div style="color:#f85149;padding:28px;font-family:monospace;background:#0d1117;min-height:100vh;font-size:13px">'
+    +'<h2 style="font-size:20px;margin-bottom:12px">⚠️ Erro de carregamento</h2>'
+    +'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;margin-bottom:12px">'
+    +'<b>Mensagem:</b> '+msg+'<br/>'
+    +'<b>Arquivo:</b> '+file+'<br/>'
+    +'<b>Linha:</b> '+line
+    +'</div>'
+    +(err !== msg ? '<pre style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;overflow:auto;font-size:11px;color:#8b949e">'+err+'</pre>' : '')
+    +'<p style="color:#8b949e;margin-top:16px">Abra o Console (F12) para mais detalhes.</p>'
+    +'</div>';
 });
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+
+try {
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+} catch(e) {
+  console.error('Erro ao renderizar App:', e);
+  document.getElementById('root').innerHTML = 
+    '<div style="color:#f85149;padding:28px;font-family:monospace;background:#0d1117;min-height:100vh">'
+    +'<h2>⚠️ Erro ao inicializar</h2>'
+    +'<pre style="margin-top:12px;font-size:12px;color:#8b949e">'+e.stack+'</pre>'
+    +'</div>';
+}
 </script>
 </body>
 </html>
