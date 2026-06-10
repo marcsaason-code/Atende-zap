@@ -1,9 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "admin.atendemaiszap.com" }],
-      "destination": "/admin.html"
-    }
-  ]
-}
