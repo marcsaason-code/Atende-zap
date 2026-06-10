@@ -1,0 +1,14 @@
+{
+  "routes": [
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "admin.atendemaiszap.com" }],
+      "dest": "/admin.html"
+    },
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "app.atendemaiszap.com" }],
+      "dest": "/index.html"
+    }
+  ]
+}
