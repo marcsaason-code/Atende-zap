@@ -2571,19 +2571,56 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
 }
 
 function ConfigFormFuncionario({ item, onSave, onClose }) {
-  const [form, setForm] = useState({ nome: item?.nome||'', especialidade: item?.especialidade||'', ativo: item?.ativo!==false });
+  const [form, setForm] = useState({
+    nome: item?.nome||'',
+    especialidade: item?.especialidade||'',
+    cpf: item?.cpf||'',
+    crm: item?.crm||'',
+    email: item?.email||'',
+    ativo: item?.ativo!==false,
+  });
   const up = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const formatCPF = (v) => {
+    const d = v.replace(/\D/g,'').slice(0,11);
+    return d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  };
+
+  const senhaGerada = form.cpf ? form.cpf.replace(/\D/g,'').slice(0,5) : '—';
+
   return (
     <>
-      <div className="form-field"><label>Nome completo</label><input value={form.nome} onChange={e=>up('nome',e.target.value)} placeholder="Dr. João Silva"/></div>
-      <div className="form-field"><label>Especialidade / Cargo</label><input value={form.especialidade} onChange={e=>up('especialidade',e.target.value)} placeholder="Clínico Geral, Atendente..."/></div>
+      <div className="form-grid">
+        <div className="form-field"><label>Nome completo</label><input value={form.nome} onChange={e=>up('nome',e.target.value)} placeholder="Dr. João Silva"/></div>
+        <div className="form-field"><label>Especialidade / Cargo</label><input value={form.especialidade} onChange={e=>up('especialidade',e.target.value)} placeholder="Clínico Geral, Atendente..."/></div>
+      </div>
+      <div className="form-grid">
+        <div className="form-field">
+          <label>CPF</label>
+          <input value={form.cpf} onChange={e=>up('cpf',formatCPF(e.target.value))} placeholder="000.000.000-00" inputMode="numeric"/>
+        </div>
+        <div className="form-field"><label>CRM / Registro</label><input value={form.crm} onChange={e=>up('crm',e.target.value)} placeholder="CRM-SP 123456"/></div>
+      </div>
+      <div className="form-field"><label>E-mail</label><input type="email" value={form.email} onChange={e=>up('email',e.target.value)} placeholder="funcionario@email.com"/></div>
+
+      {/* Senha gerada automaticamente */}
+      {form.cpf && form.cpf.replace(/\D/g,'').length >= 5 && (
+        <div style={{background:'var(--green-light)',border:'1px solid var(--green-mid)',borderRadius:10,padding:'10px 14px',marginBottom:12,display:'flex',alignItems:'center',gap:10}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-dark)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:'var(--green-dark)'}}>Senha gerada automaticamente</div>
+            <div style={{fontSize:12,color:'var(--green-dark)',opacity:.8}}>Login: CPF · Senha: <strong>{senhaGerada}</strong> (5 primeiros dígitos do CPF)</div>
+          </div>
+        </div>
+      )}
+
       <div className="form-field" style={{display:'flex',alignItems:'center',gap:10}}>
         <input type="checkbox" id="ativo" checked={form.ativo} onChange={e=>up('ativo',e.target.checked)} style={{width:16,height:16}}/>
         <label htmlFor="ativo" style={{fontSize:14,color:'var(--text)',cursor:'pointer',textTransform:'none',letterSpacing:0}}>Funcionário ativo</label>
       </div>
       <div className="modal-actions">
         <button className="btn-cancel" onClick={onClose}>Cancelar</button>
-        <button className="btn-save" onClick={()=>onSave(form)} disabled={!form.nome.trim()}>Salvar</button>
+        <button className="btn-save" onClick={()=>onSave(form)} disabled={!form.nome.trim()||!form.cpf.trim()}>Salvar</button>
       </div>
     </>
   );

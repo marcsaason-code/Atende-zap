@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Atende+Zap"/>
+<meta name="theme-color" content="#22c55e"/>
+<title>Atende+Zap | Staff</title>
+<link rel="icon" type="image/x-icon" href="./assets/favicon.ico"/>
+<link rel="apple-touch-icon" href="./assets/logo.png"/>
+<script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #22c55e;
+    --green-dark: #16a34a;
+    --green-mid: #4ade80;
+    --green-light: #dcfce7;
+    --green-bright: #2ea043;
+    --bg: #f8fafc;
+    --bg2: #ffffff;
+    --bg3: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text2: #475569;
+    --text3: #94a3b8;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+    --blue: #3b82f6;
+    --blue-light: #eff6ff;
+    --radius: 14px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+    --nav-h: 68px;
+    --header-h: 64px;
+  }
+  html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+  /* ── Login ── */
+  .login-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 40%, #f8fafc 100%); }
+  .login-card { width: 100%; max-width: 380px; background: var(--bg2); border-radius: 24px; padding: 36px 28px; box-shadow: 0 8px 40px rgba(34,197,94,0.12), 0 2px 8px rgba(0,0,0,0.06); }
+  .login-logo { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .login-logo img { height: 48px; object-fit: contain; }
+  .login-badge { background: var(--green-light); color: var(--green-dark); font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 99px; letter-spacing: 0.04em; }
+  .login-title { font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 600; color: var(--text); text-align: center; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--text3); text-align: center; margin-bottom: 24px; }
+  .login-field { margin-bottom: 14px; }
+  .login-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .login-field input { width: 100%; padding: 13px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border .15s; }
+  .login-field input:focus { border-color: var(--green); background: #fff; }
+  .login-btn { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Sora', sans-serif; cursor: pointer; transition: background .15s, transform .1s; margin-top: 8px; }
+  .login-btn:hover { background: var(--green-dark); }
+  .login-btn:active { transform: scale(0.98); }
+  .login-btn:disabled { opacity: .6; }
+  .login-err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; }
+  .login-hint { font-size: 11px; color: var(--text3); text-align: center; margin-top: 16px; }
+
+  /* ── App Shell ── */
+  .app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .header { height: var(--header-h); background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--green-dark); flex-shrink: 0; }
+  .header-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .header-role { font-size: 11px; color: var(--text3); }
+  .header-logo { height: 28px; object-fit: contain; }
+  .page-area { flex: 1; overflow-y: auto; padding-bottom: calc(var(--nav-h) + 16px); }
+  .page { padding: 20px 16px; }
+
+  /* ── Bottom Nav ── */
+  .bottom-nav { height: var(--nav-h); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding: 0 8px; flex-shrink: 0; position: sticky; bottom: 0; z-index: 10; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px; border: none; background: none; cursor: pointer; border-radius: 12px; transition: background .15s; min-width: 60px; }
+  .nav-btn.active { background: var(--green-light); }
+  .nav-btn svg { transition: stroke .15s; }
+  .nav-btn.active svg { stroke: var(--green-dark); }
+  .nav-btn span { font-size: 10px; font-weight: 500; color: var(--text3); transition: color .15s; }
+  .nav-btn.active span { color: var(--green-dark); font-weight: 600; }
+  .nav-badge { position: absolute; top: 6px; right: 10px; width: 16px; height: 16px; background: var(--danger); border-radius: 50%; font-size: 9px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; }
+
+  /* ── Cards ── */
+  .card { background: var(--bg2); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 14px; }
+  .card-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  /* ── Agenda Item ── */
+  .ag-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; position: relative; }
+  .ag-item:last-child { border-bottom: none; }
+  .ag-item:active { background: var(--bg3); }
+  .ag-time { font-size: 13px; font-weight: 600; color: var(--green-dark); font-family: 'Sora', sans-serif; min-width: 44px; padding-top: 2px; }
+  .ag-info { flex: 1; min-width: 0; }
+  .ag-nome { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+  .ag-tag { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 99px; margin-top: 5px; display: inline-block; }
+  .ag-tag.confirmado { background: var(--green-light); color: var(--green-dark); }
+  .ag-tag.pendente { background: #fef3c7; color: #92400e; }
+  .ag-tag.cancelado { background: #fee2e2; color: #991b1b; }
+  .ag-tag.finalizado { background: #f0fdf4; color: #166534; }
+  .ag-tag.retorno { background: #eff6ff; color: #1e40af; }
+  .ag-arrow { color: var(--text3); padding-top: 4px; }
+
+  /* ── Date strip ── */
+  .date-strip { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 4px; scrollbar-width: none; margin-bottom: 4px; }
+  .date-strip::-webkit-scrollbar { display: none; }
+  .date-day { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 12px; border-radius: 12px; cursor: pointer; min-width: 52px; border: 1.5px solid transparent; transition: all .15s; flex-shrink: 0; }
+  .date-day.active { background: var(--green); border-color: var(--green); }
+  .date-day.today { border-color: var(--green); }
+  .date-day .d-name { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; }
+  .date-day .d-num { font-size: 18px; font-weight: 700; color: var(--text); font-family: 'Sora', sans-serif; }
+  .date-day .d-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .date-day.active .d-name, .date-day.active .d-num { color: #fff; }
+  .date-day.active .d-dot { background: rgba(255,255,255,0.7); }
+
+  /* ── Modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
+  .modal-sheet { background: var(--bg2); border-radius: 24px 24px 0 0; width: 100%; max-width: 500px; padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; animation: slideUp .25s ease; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 99px; margin: 0 auto 20px; }
+  .modal-title { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 20px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .field input, .field select, .field textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border .15s; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--green); background: #fff; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-primary { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Sora', sans-serif; cursor: pointer; transition: background .15s; margin-top: 6px; }
+  .btn-primary:disabled { opacity: .5; }
+  .btn-secondary { width: 100%; padding: 13px; background: var(--bg3); color: var(--text2); border: none; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+
+  /* ── Detalhe ── */
+  .detail-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--bg3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .detail-label { font-size: 11px; color: var(--text3); font-weight: 500; }
+  .detail-value { font-size: 14px; color: var(--text); font-weight: 500; margin-top: 1px; }
+  .status-btn { flex: 1; padding: 11px 8px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--bg2); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; text-align: center; }
+  .status-btn.active { border-color: var(--green); background: var(--green-light); color: var(--green-dark); }
+  .status-btn:active { transform: scale(0.97); }
+
+  /* ── Dashboard ── */
+  .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-sm); }
+  .metric-val { font-family: 'Sora', sans-serif; font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; }
+  .metric-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .metric-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+  /* ── Empty ── */
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; gap: 10px; text-align: center; }
+  .empty p { font-size: 14px; font-weight: 500; color: var(--text3); }
+  .empty span { font-size: 12px; color: var(--text3); opacity: .7; }
+
+  /* ── Toast ── */
+  .toast-wrap { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 999; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 32px); max-width: 360px; pointer-events: none; }
+  .toast { background: #1e293b; color: #fff; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.2); animation: fadeInDown .25s ease; }
+  .toast.success { background: var(--green-dark); }
+  .toast.error { background: var(--danger); }
+  @keyframes fadeInDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+  .spinner { width: 24px; height: 24px; border: 2.5px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fade-in { animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const SB_URL = 'https://rhraigbapgpzvmcjbett.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+/* ── Ícones SVG ── */
+const IcoHome = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+const IcoCal = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+const IcoPlus = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const IcoUser = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+const IcoChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>;
+const IcoPhone = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.12 1.18 2 2 0 012.1 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>;
+const IcoClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+const IcoTag = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>;
+const IcoLogout = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+
+/* ── Toast ── */
+function ToastMgr({ toasts }) {
+  return <div className="toast-wrap">{toasts.map(t=><div key={t.id} className={`toast ${t.type||''}`}>{t.msg}</div>)}</div>;
+}
+
+/* ── App ── */
+function App() {
+  const [func, setFunc] = useState(() => { try { return JSON.parse(localStorage.getItem('staff_func')||'null'); } catch { return null; } });
+  const [page, setPage] = useState('home');
+  const [agendamentos, setAgendamentos] = useState([]);
+  const [servicos, setServicos] = useState([]);
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (msg, type='success') => {
+    const id = Date.now();
+    setToasts(p => [...p, {id, msg, type}]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3000);
+  };
+
+  const handleLogin = (data) => {
+    localStorage.setItem('staff_func', JSON.stringify(data));
+    setFunc(data);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('staff_func');
+    setFunc(null);
+    setAgendamentos([]);
+  };
+
+  useEffect(() => {
+    if (!func) return;
+    const load = async () => {
+      const [{ data: ags }, { data: servs }] = await Promise.all([
+        sb.from('agendamentos').select('*').eq('cnpj', func.cnpj).eq('funcionario_nome', func.nome).order('data').order('hora'),
+        sb.from('servicos').select('*').eq('cnpj', func.cnpj),
+      ]);
+      if (ags) setAgendamentos(ags);
+      if (servs) setServicos(servs);
+    };
+    load();
+
+    // Realtime
+    const ch = sb.channel(`staff:${func.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agendamentos', filter: `cnpj=eq.${func.cnpj}` },
+        payload => {
+          if (payload.eventType === 'INSERT' && payload.new.funcionario_nome === func.nome) {
+            setAgendamentos(p => [...p, payload.new].sort((a,b) => a.data.localeCompare(b.data)||a.hora.localeCompare(b.hora)));
+          } else if (payload.eventType === 'UPDATE') {
+            setAgendamentos(p => p.map(a => a.id === payload.new.id ? payload.new : a));
+          } else if (payload.eventType === 'DELETE') {
+            setAgendamentos(p => p.filter(a => a.id !== payload.old.id));
+          }
+        })
+      .subscribe();
+    return () => sb.removeChannel(ch);
+  }, [func]);
+
+  if (!func) return <LoginPage onLogin={handleLogin} />;
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const agHoje = agendamentos.filter(a => a.data === hoje);
+  const agPendentes = agendamentos.filter(a => a.status === 'pendente');
+
+  return (
+    <div className="app">
+      <ToastMgr toasts={toasts} />
+      <header className="header">
+        <div className="header-left">
+          <div className="header-avatar">{func.nome?.slice(0,2).toUpperCase()}</div>
+          <div>
+            <div className="header-name">{func.nome?.split(' ')[0]}</div>
+            <div className="header-role">{func.especialidade || 'Funcionário'}</div>
+          </div>
+        </div>
+        <img src="./assets/logo.png" alt="Atende+Zap" className="header-logo"/>
+      </header>
+
+      <div className="page-area">
+        {page === 'home' && <HomePage func={func} agendamentos={agendamentos} agHoje={agHoje} agPendentes={agPendentes} setPage={setPage} />}
+        {page === 'agenda' && <AgendaPage func={func} agendamentos={agendamentos} setAgendamentos={setAgendamentos} servicos={servicos} addToast={addToast} />}
+        {page === 'novo' && <NovoPage func={func} servicos={servicos} agendamentos={agendamentos} setAgendamentos={setAgendamentos} addToast={addToast} setPage={setPage} />}
+        {page === 'perfil' && <PerfilPage func={func} onLogout={handleLogout} agendamentos={agendamentos} />}
+      </div>
+
+      <nav className="bottom-nav">
+        {[
+          { id: 'home', label: 'Início', icon: <IcoHome /> },
+          { id: 'agenda', label: 'Agenda', icon: <IcoCal /> },
+          { id: 'novo', label: 'Novo', icon: <IcoPlus /> },
+          { id: 'perfil', label: 'Perfil', icon: <IcoUser /> },
+        ].map(n => (
+          <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={() => setPage(n.id)} style={{position:'relative'}}>
+            {n.icon}
+            <span>{n.label}</span>
+            {n.id === 'agenda' && agPendentes.length > 0 && (
+              <div className="nav-badge">{agPendentes.length}</div>
+            )}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+/* ── Login ── */
+function LoginPage({ onLogin }) {
+  const [cpf, setCpf] = useState('');
+  const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const formatCPF = (v) => {
+    const d = v.replace(/\D/g, '').slice(0, 11);
+    return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  };
+
+  const handle = async (e) => {
+    e.preventDefault();
+    setErro(''); setLoading(true);
+    try {
+      const { data, error } = await sb.rpc('login_funcionario', {
+        p_cpf: cpf.replace(/\D/g, ''),
+        p_senha: senha,
+      });
+      if (error || data?.erro) { setErro(data?.erro || 'Erro de conexão.'); }
+      else { onLogin(data); }
+    } catch { setErro('Erro de conexão. Verifique sua internet.'); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="login-wrap">
+      <div className="login-card fade-in">
+        <div className="login-logo">
+          <img src="./assets/logo.png" alt="Atende+Zap"/>
+          <span className="login-badge">Área do Funcionário</span>
+        </div>
+        <p className="login-sub">Acesse sua agenda de atendimentos</p>
+        <form onSubmit={handle}>
+          {erro && <div className="login-err">{erro}</div>}
+          <div className="login-field">
+            <label>CPF</label>
+            <input value={cpf} onChange={e=>setCpf(formatCPF(e.target.value))} placeholder="000.000.000-00" inputMode="numeric"/>
+          </div>
+          <div className="login-field">
+            <label>Senha</label>
+            <input type="password" value={senha} onChange={e=>setSenha(e.target.value)} placeholder="••••••"/>
+          </div>
+          <button className="login-btn" type="submit" disabled={loading || !cpf || !senha}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+        <p className="login-hint">Sua senha são os 5 primeiros dígitos do seu CPF</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Home ── */
+function HomePage({ func, agendamentos, agHoje, agPendentes, setPage }) {
+  const hoje = new Date();
+  const diaSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][hoje.getDay()];
+  const mes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][hoje.getMonth()];
+
+  const proximos = agendamentos.filter(a => {
+    const d = new Date(a.data+'T00:00');
+    const h = new Date(); h.setHours(0,0,0,0);
+    return d >= h && a.status !== 'cancelado' && a.status !== 'finalizado';
+  }).slice(0, 5);
+
+  const statusColor = { confirmado:'#22c55e', pendente:'#f59e0b', cancelado:'#ef4444', finalizado:'#94a3b8', retorno:'#3b82f6' };
+
+  return (
+    <div className="page fade-in">
+      {/* Saudação */}
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:12,color:'var(--text3)',fontWeight:500,marginBottom:2}}>{diaSemana}, {hoje.getDate()} de {mes}</div>
+        <div style={{fontFamily:'Sora',fontSize:20,fontWeight:600,color:'var(--text)'}}>
+          Olá, {func.nome?.split(' ')[0]}
+        </div>
+      </div>
+
+      {/* Métricas */}
+      <div className="metric-row">
+        <div className="metric" onClick={() => setPage('agenda')} style={{cursor:'pointer'}}>
+          <div className="metric-val">{agHoje.length}</div>
+          <div className="metric-label"><span className="metric-dot" style={{background:'var(--green)'}}/>Hoje</div>
+        </div>
+        <div className="metric" onClick={() => setPage('agenda')} style={{cursor:'pointer'}}>
+          <div className="metric-val" style={{color:'var(--warn)'}}>{agPendentes.length}</div>
+          <div className="metric-label"><span className="metric-dot" style={{background:'var(--warn)'}}/>Pendentes</div>
+        </div>
+      </div>
+
+      {/* Próximos agendamentos */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Próximos atendimentos</span>
+          <button onClick={() => setPage('agenda')} style={{fontSize:12,color:'var(--green-dark)',background:'none',border:'none',cursor:'pointer',fontWeight:600}}>Ver todos</button>
+        </div>
+        {proximos.length === 0 ? (
+          <div className="empty">
+            <p>Nenhum atendimento próximo</p>
+            <span>Seus agendamentos aparecem aqui</span>
+          </div>
+        ) : proximos.map(a => (
+          <div key={a.id} className="ag-item">
+            <div>
+              <div className="ag-time">{a.hora}</div>
+              <div style={{fontSize:10,color:'var(--text3)',marginTop:2}}>{a.data === new Date().toISOString().slice(0,10) ? 'Hoje' : new Date(a.data+'T00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div>
+            </div>
+            <div className="ag-info">
+              <div className="ag-nome">{a.nome}</div>
+              <div className="ag-sub">{a.servico_nome || a.categoria || '—'}</div>
+              <span className={`ag-tag ${a.status||'confirmado'}`}>{a.status==='confirmado'?'Confirmado':a.status==='pendente'?'Pendente':a.status==='finalizado'?'Finalizado':a.status==='retorno'?'Retorno':'Cancelado'}</span>
+            </div>
+            <div className="ag-arrow"><IcoChevron/></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Agenda ── */
+function AgendaPage({ func, agendamentos, setAgendamentos, servicos, addToast }) {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0,10));
+  const [selectedAg, setSelectedAg] = useState(null);
+
+  // Gera 14 dias a partir de hoje
+  const days = Array.from({length:14}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  const hoje = new Date().toISOString().slice(0,10);
+  const agDia = agendamentos.filter(a => a.data === selectedDate && a.status !== 'cancelado').sort((a,b) => a.hora.localeCompare(b.hora));
+  const temAg = (date) => agendamentos.some(a => a.data === date && a.status !== 'cancelado');
+  const diasNome = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  const [editandoObs, setEditandoObs] = useState(false);
+  const [obsTexto, setObsTexto] = useState('');
+  const [salvandoObs, setSalvandoObs] = useState(false);
+
+  const abrirModal = (ag) => {
+    setSelectedAg(ag);
+    setObsTexto(ag.obs || '');
+    setEditandoObs(false);
+  };
+
+  const salvarObs = async () => {
+    if (obsTexto === selectedAg.obs) { setEditandoObs(false); return; }
+    setSalvandoObs(true);
+    try {
+      const { data } = await sb.from('agendamentos').update({ obs: obsTexto }).eq('id', selectedAg.id).select().single();
+      setAgendamentos(p => p.map(a => a.id === selectedAg.id ? data : a));
+      setSelectedAg(data);
+      setEditandoObs(false);
+      addToast('Observação salva!');
+    } catch { addToast('Erro ao salvar observação', 'error'); }
+    setSalvandoObs(false);
+  };
+
+  const updateStatus = async (ag, novoStatus) => {
+    try {
+      const { data } = await sb.from('agendamentos').update({ status: novoStatus }).eq('id', ag.id).select().single();
+      setAgendamentos(p => p.map(a => a.id === ag.id ? data : a));
+      setSelectedAg(data);
+      addToast(`Status atualizado para ${novoStatus}`);
+    } catch { addToast('Erro ao atualizar status', 'error'); }
+  };
+
+  return (
+    <div className="page fade-in">
+      {/* Date strip */}
+      <div className="date-strip">
+        {days.map(d => {
+          const iso = d.toISOString().slice(0,10);
+          return (
+            <div key={iso} className={`date-day ${selectedDate===iso?'active':iso===hoje?'today':''}`} onClick={() => setSelectedDate(iso)}>
+              <span className="d-name">{diasNome[d.getDay()]}</span>
+              <span className="d-num">{d.getDate()}</span>
+              {temAg(iso) && <span className="d-dot"/>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Lista do dia */}
+      <div style={{marginTop:12}}>
+        <div style={{fontSize:12,color:'var(--text3)',fontWeight:500,padding:'0 4px',marginBottom:10}}>
+          {agDia.length} atendimento{agDia.length!==1?'s':''} — {new Date(selectedDate+'T00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}
+        </div>
+        {agDia.length === 0 ? (
+          <div className="empty">
+            <p>Nenhum atendimento</p>
+            <span>Selecione outra data ou adicione um novo</span>
+          </div>
+        ) : (
+          <div className="card">
+            {agDia.map(a => (
+              <div key={a.id} className="ag-item" onClick={() => abrirModal(a)}>
+                <div>
+                  <div className="ag-time">{a.hora}</div>
+                </div>
+                <div className="ag-info">
+                  <div className="ag-nome">{a.nome}</div>
+                  <div className="ag-sub">{a.telefone}</div>
+                  {a.servico_nome && <div className="ag-sub" style={{marginTop:2}}>{a.servico_nome}</div>}
+                  <span className={`ag-tag ${a.status||'confirmado'}`}>
+                    {a.status==='confirmado'?'Confirmado':a.status==='pendente'?'Pendente':a.status==='finalizado'?'Finalizado':a.status==='retorno'?'Retorno':'Cancelado'}
+                  </span>
+                </div>
+                <div className="ag-arrow"><IcoChevron/></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal detalhe */}
+      {selectedAg && (
+        <div className="modal-overlay" onClick={() => { setSelectedAg(null); setEditandoObs(false); }}>
+          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle"/>
+            <div className="modal-title">{selectedAg.nome}</div>
+
+            {[
+              { icon: <IcoClock/>, label: 'Data e hora', value: `${new Date(selectedAg.data+'T00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})} às ${selectedAg.hora}` },
+              { icon: <IcoPhone/>, label: 'Telefone', value: selectedAg.telefone || '—' },
+              { icon: <IcoTag/>, label: 'Serviço', value: selectedAg.servico_nome || selectedAg.categoria || '—' },
+            ].map((r,i) => (
+              <div key={i} className="detail-row">
+                <div className="detail-icon">{r.icon}</div>
+                <div>
+                  <div className="detail-label">{r.label}</div>
+                  <div className="detail-value">{r.value}</div>
+                </div>
+              </div>
+            ))}
+
+            {/* Observações editável */}
+            <div className="detail-row" style={{alignItems:'flex-start'}}>
+              <div className="detail-icon" style={{marginTop:2}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+                  <div className="detail-label">Observações</div>
+                  {!editandoObs && (
+                    <button onClick={() => setEditandoObs(true)}
+                      style={{fontSize:11,color:'var(--green-dark)',background:'none',border:'none',cursor:'pointer',fontWeight:600,padding:0}}>
+                      Editar
+                    </button>
+                  )}
+                </div>
+                {editandoObs ? (
+                  <div>
+                    <textarea
+                      value={obsTexto}
+                      onChange={e => setObsTexto(e.target.value)}
+                      rows={3}
+                      autoFocus
+                      style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--green)',borderRadius:10,fontSize:14,fontFamily:'DM Sans, sans-serif',color:'var(--text)',background:'var(--bg)',outline:'none',resize:'none',lineHeight:1.5}}
+                      placeholder="Adicione uma observação..."
+                    />
+                    <div style={{display:'flex',gap:8,marginTop:8}}>
+                      <button onClick={salvarObs} disabled={salvandoObs}
+                        style={{flex:1,padding:'10px',background:'var(--green)',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                        {salvandoObs ? 'Salvando...' : 'Salvar'}
+                      </button>
+                      <button onClick={() => { setEditandoObs(false); setObsTexto(selectedAg.obs||''); }}
+                        style={{flex:1,padding:'10px',background:'var(--bg3)',color:'var(--text2)',border:'none',borderRadius:10,fontSize:13,cursor:'pointer'}}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="detail-value" style={{color: selectedAg.obs ? 'var(--text)' : 'var(--text3)', fontStyle: selectedAg.obs ? 'normal' : 'italic'}}>
+                    {selectedAg.obs || 'Nenhuma observação'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Status buttons */}
+            <div style={{marginTop:16,marginBottom:8}}>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--text3)',letterSpacing:'.06em',textTransform:'uppercase',marginBottom:10}}>Atualizar status</div>
+              <div style={{display:'flex',gap:8}}>
+                {['confirmado','finalizado','retorno','cancelado'].map(s => (
+                  <button key={s} className={`status-btn ${selectedAg.status===s?'active':''}`} onClick={() => updateStatus(selectedAg, s)}>
+                    {s==='confirmado'?'Confirmar':s==='finalizado'?'Finalizar':s==='retorno'?'Retorno':'Cancelar'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button className="btn-secondary" onClick={() => { setSelectedAg(null); setEditandoObs(false); }}>Fechar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Novo Agendamento ── */
+function NovoPage({ func, servicos, agendamentos, setAgendamentos, addToast, setPage }) {
+  const [form, setForm] = useState({
+    nome: '', telefone: '', data: new Date().toISOString().slice(0,10),
+    hora: '09:00', servico_nome: '', obs: '', status: 'confirmado',
+  });
+  const [loading, setLoading] = useState(false);
+  const up = (k,v) => setForm(p => ({...p,[k]:v}));
+
+  const salvar = async () => {
+    if (!form.nome || !form.data || !form.hora) { addToast('Preencha nome, data e hora', 'error'); return; }
+    setLoading(true);
+    try {
+      const payload = {
+        cnpj: func.cnpj,
+        nome: form.nome,
+        telefone: form.telefone,
+        data: form.data,
+        hora: form.hora,
+        status: form.status,
+        funcionario_id: func.id,
+        funcionario_nome: func.nome,
+        servico_nome: form.servico_nome,
+        obs: form.obs,
+      };
+      const { data, error } = await sb.from('agendamentos').insert([payload]).select().single();
+      if (error) throw error;
+      setAgendamentos(p => [...p, data].sort((a,b) => a.data.localeCompare(b.data)||a.hora.localeCompare(b.hora)));
+      addToast('Agendamento salvo com sucesso!');
+      setForm({ nome:'', telefone:'', data: new Date().toISOString().slice(0,10), hora:'09:00', servico_nome:'', obs:'', status:'confirmado' });
+      setPage('agenda');
+    } catch (e) { addToast(e.message||'Erro ao salvar', 'error'); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="page fade-in">
+      <div style={{fontFamily:'Sora',fontSize:18,fontWeight:600,marginBottom:20}}>Novo agendamento</div>
+
+      <div className="card" style={{padding:'16px'}}>
+        <div className="field">
+          <label>Nome do cliente</label>
+          <input value={form.nome} onChange={e=>up('nome',e.target.value)} placeholder="Nome completo"/>
+        </div>
+        <div className="field">
+          <label>Telefone</label>
+          <input value={form.telefone} onChange={e=>up('telefone',e.target.value)} placeholder="(00) 00000-0000" inputMode="tel"/>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Data</label>
+            <input type="date" value={form.data} onChange={e=>up('data',e.target.value)}/>
+          </div>
+          <div className="field">
+            <label>Hora</label>
+            <input type="time" value={form.hora} onChange={e=>up('hora',e.target.value)}/>
+          </div>
+        </div>
+        {servicos.length > 0 && (
+          <div className="field">
+            <label>Serviço</label>
+            <select value={form.servico_nome} onChange={e=>up('servico_nome',e.target.value)}>
+              <option value="">Selecione um serviço</option>
+              {servicos.map(s => <option key={s.id} value={s.nome}>{s.nome}{s.duracao_min?` (${s.duracao_min}min)`:''}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="field">
+          <label>Status</label>
+          <select value={form.status} onChange={e=>up('status',e.target.value)}>
+            <option value="confirmado">Confirmado</option>
+            <option value="pendente">Pendente</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>Observações</label>
+          <textarea value={form.obs} onChange={e=>up('obs',e.target.value)} rows={3} placeholder="Informações adicionais..."/>
+        </div>
+        <button className="btn-primary" onClick={salvar} disabled={loading || !form.nome}>
+          {loading ? 'Salvando...' : 'Salvar agendamento'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Perfil ── */
+function PerfilPage({ func, onLogout, agendamentos }) {
+  const hoje = new Date().toISOString().slice(0,10);
+  const total = agendamentos.length;
+  const mes = agendamentos.filter(a => a.data?.slice(0,7) === hoje.slice(0,7)).length;
+  const finalizados = agendamentos.filter(a => a.status === 'finalizado').length;
+
+  return (
+    <div className="page fade-in">
+      {/* Avatar */}
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,marginBottom:24,paddingTop:8}}>
+        <div style={{width:72,height:72,borderRadius:'50%',background:'var(--green-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,fontWeight:700,color:'var(--green-dark)',border:'3px solid var(--green)'}}>
+          {func.nome?.slice(0,2).toUpperCase()}
+        </div>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontFamily:'Sora',fontSize:18,fontWeight:600}}>{func.nome}</div>
+          <div style={{fontSize:13,color:'var(--text3)',marginTop:3}}>{func.especialidade || 'Funcionário'}</div>
+          {func.crm && <div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>CRM: {func.crm}</div>}
+        </div>
+      </div>
+
+      {/* Estatísticas */}
+      <div className="metric-row" style={{gridTemplateColumns:'1fr 1fr 1fr'}}>
+        {[['Total','var(--text)', total],['Este mês','var(--green-dark)', mes],['Finalizados','var(--blue)', finalizados]].map(([l,c,v]) => (
+          <div key={l} className="metric" style={{textAlign:'center'}}>
+            <div className="metric-val" style={{color:c,fontSize:22}}>{v}</div>
+            <div className="metric-label" style={{textAlign:'center'}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dados */}
+      <div className="card">
+        <div className="card-header"><span className="card-title">Meus dados</span></div>
+        {[
+          ['CPF', func.cpf || '—'],
+          ['E-mail', func.email || '—'],
+          ['Especialidade', func.especialidade || '—'],
+          ['CRM', func.crm || '—'],
+        ].map(([l,v]) => (
+          <div key={l} style={{padding:'13px 16px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:13,color:'var(--text3)',fontWeight:500}}>{l}</span>
+            <span style={{fontSize:13,color:'var(--text)',fontWeight:500}}>{v}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Logout */}
+      <button onClick={onLogout} style={{width:'100%',padding:'14px',background:'none',border:'1.5px solid var(--border)',borderRadius:12,fontSize:14,fontWeight:500,color:'var(--text2)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:8}}>
+        <IcoLogout/> Sair da conta
+      </button>
+    </div>
+  );
+}
+
+/* ── Render ── */
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
