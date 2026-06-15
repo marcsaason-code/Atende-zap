@@ -7,8 +7,13 @@
     },
     {
       "src": "/(.*)",
-      "has": [{ "type": "host", "value": "app.atendemaiszap.com" }],
+      "has": [{ "type": "host", "value": "sistema.atendemaiszap.com" }],
       "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "staff.atendemaiszap.com" }],
+      "dest": "/staff.html"
     }
   ]
 }
