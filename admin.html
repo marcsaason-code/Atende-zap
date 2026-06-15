@@ -341,7 +341,6 @@ function App(){
   const PAGE_LABELS={dashboard:'Dashboard',clientes:'Clientes',financeiro:'Financeiro',suporte:'Suporte',cliente: selectedCliente?.nome||'Cliente',logs:'Logs de Acesso'};
 
   const handleLogout = () => {
-    sb.rpc('login_admin', { p_email: admin?.email||'', p_senha: '__logout__' }).catch(()=>{});
     try { sb.from('logs_acesso').insert([{ tipo:'admin', evento:'logout', cnpj: admin?.email }]); } catch {}
     setAdmin(null);
     localStorage.removeItem('atende_admin');
