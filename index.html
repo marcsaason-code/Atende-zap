@@ -1769,20 +1769,30 @@ function WhatsApp({ status, setStatus, user, addToast }) {
   const reconectar = async () => {
     if (!hasEvolution) { addToast('Dados da Evolution não configurados. Contate o suporte.', 'error'); return; }
     setReconectando(true); setQrStep('gerando'); setQrCode('');
+    const PROXY = 'https://rhraigbapgpzvmcjbett.supabase.co/functions/v1/evolution-proxy';
     try {
-      const r = await fetch(`${evUrl}/instance/connect/${evInstance}`, { headers: { apikey: evKey } });
+      const r = await fetch(`${PROXY}?action=qr&cnpj=${encodeURIComponent(user.cnpj)}`, {
+        headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4' }
+      });
       if (r.ok) {
         const d = await r.json();
-        setQrCode(d?.base64 || 'DEMO');
-      } else { setQrCode('DEMO'); }
-    } catch { setQrCode('DEMO'); }
+        setQrCode(d?.base64 || '');
+        if (!d?.base64) addToast('QR Code não gerado. Verifique a instância.', 'error');
+      } else {
+        addToast('Erro ao gerar QR Code.', 'error');
+      }
+    } catch (e) {
+      addToast('Erro de conexão ao gerar QR Code.', 'error');
+    }
     setQrStep('aguardando');
 
     /* Poll para verificar conexão */
     clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const r = await fetch(`${evUrl}/instance/connectionState/${evInstance}`, { headers: { apikey: evKey } });
+        const r = await fetch(`${PROXY}?action=status&cnpj=${encodeURIComponent(user.cnpj)}`, {
+          headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4' }
+        });
         const d = await r.json();
         if (d?.instance?.state === 'open') {
           clearInterval(pollRef.current);
