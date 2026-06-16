@@ -1770,13 +1770,32 @@ function WhatsApp({ status, setStatus, user, addToast }) {
     if (!hasEvolution) { addToast('Dados da Evolution não configurados. Contate o suporte.', 'error'); return; }
     setReconectando(true); setQrStep('gerando'); setQrCode('');
     try {
-      const r = await fetch(`${evUrl}/instance/connect/${evInstance}`, { headers: { apikey: evKey } });
+      const r = await fetch(`${evUrl}/instance/connect/${evInstance}`, {
+        method: 'GET',
+        headers: { apikey: evKey }
+      });
       if (r.ok) {
         const d = await r.json();
-        setQrCode(d?.base64 || 'DEMO');
-      } else { setQrCode('DEMO'); }
-    } catch { setQrCode('DEMO'); }
-    setQrStep('aguardando');
+        if (d?.base64) {
+          setQrCode(d.base64);
+          setQrStep('aguardando');
+        } else if (d?.code === 'bad_request' || d?.message) {
+          addToast(d.message || 'Erro na instância Evolution.', 'error');
+          setQrStep('idle'); setReconectando(false); return;
+        } else {
+          // Instância já conectada ou retorno inesperado
+          setQrStep('conectado'); setStatus('conectado');
+          setReconectando(false); return;
+        }
+      } else {
+        const err = await r.json().catch(()=>({}));
+        addToast(err?.message || 'Erro ao conectar com a Evolution.', 'error');
+        setQrStep('idle'); setReconectando(false); return;
+      }
+    } catch (e) {
+      addToast('Erro CORS: configure o domínio sistema.atendemaiszap.com na Evolution.', 'error');
+      setQrStep('idle'); setReconectando(false); return;
+    }
 
     /* Poll para verificar conexão */
     clearInterval(pollRef.current);
