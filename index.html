@@ -553,6 +553,14 @@ function App() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('atende_user') || 'null'); } catch { return null; }
   });
+
+  // Ao restaurar sessão do localStorage, verifica status do WA e carrega dados
+  useEffect(() => {
+    if (user) {
+      checkWaStatus(user);
+      loadData(user.cnpj);
+    }
+  }, []);
   const [page, setPage] = useState('dashboard');
   const [toasts, setToasts] = useState([]);
   const [atendimentos, setAtendimentos] = useState([]);
@@ -560,7 +568,10 @@ function App() {
   const [funcionarios, setFuncionarios] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [servicos, setServicos] = useState([]);
-  const [waStatus, setWaStatus] = useState('desconectado');
+  const [waStatus, setWaStatus] = useState(() => {
+    // Inicializa do banco logo após — começa como 'verificando'
+    return 'verificando';
+  });
   const [loading, setLoading] = useState(false);
 
   const addToast = useCallback((msg, type = 'success') => {
@@ -605,19 +616,13 @@ function App() {
 
   /* Verifica estado da instância Evolution ao logar */
   const checkWaStatus = useCallback(async (userData) => {
-    if (!userData.cnpj) return;
-    const cnpjKey = userData.cnpj.replace(/\D/g, '');
-    // 1. Restaura do localStorage imediatamente (sem flicker)
-    const cached = localStorage.getItem(`wa_status_${cnpjKey}`);
-    if (cached === 'conectado') { setWaStatus('conectado'); return; }
+    if (!userData.cnpj) { setWaStatus('desconectado'); return; }
     try {
-      // 2. Confirma com o banco
       const { data } = await sb.from('usuarios').select('wa_status').eq('cnpj', userData.cnpj).single();
-      if (data?.wa_status === 'conectado') {
-        setWaStatus('conectado');
-        localStorage.setItem(`wa_status_${cnpjKey}`, 'conectado');
-      }
-    } catch {}
+      setWaStatus(data?.wa_status === 'conectado' ? 'conectado' : 'desconectado');
+    } catch {
+      setWaStatus('desconectado');
+    }
   }, []);
 
   const handleLogin = async (userData) => {
@@ -632,12 +637,10 @@ function App() {
 
   const handleLogout = () => {
     try { sb.from('logs_acesso').insert([{ cnpj: user?.cnpj, tipo:'cliente', evento:'logout' }]); } catch {}
-    if (user?.cnpj) {
-      const cnpjKey = user.cnpj.replace(/\D/g, '');
-      localStorage.removeItem(`wa_status_${cnpjKey}`);
-    }
     setUser(null);
     localStorage.removeItem('atende_user');
+    // Limpa quaisquer chaves wa_status antigas
+    Object.keys(localStorage).filter(k => k.startsWith('wa_status')).forEach(k => localStorage.removeItem(k));
     setAtendimentos([]);
     setAgendamentos([]);
     setFuncionarios([]);
@@ -874,8 +877,8 @@ function Topbar({ page, waStatus, onMenuClick }) {
       </div>
       <div style={{display:'flex',alignItems:'center',gap:16,flexShrink:0}}>
         <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--text2)'}}>
-          <span className={`status-dot ${waStatus==='conectado'?'dot-finalizado':waStatus==='conectando'?'dot-atendendo':'dot-novo'}`}/>
-          <span className="hide-sm">WhatsApp {waStatus==='conectado'?'conectado':waStatus==='conectando'?'conectando...':'desconectado'}</span>
+          <span className={`status-dot ${waStatus==='conectado'?'dot-finalizado':waStatus==='verificando'?'dot-atendendo':'dot-novo'}`}/>
+          <span className="hide-sm">WhatsApp {waStatus==='conectado'?'conectado':waStatus==='verificando'?'verificando...':'desconectado'}</span>
         </div>
         <span style={{fontSize:13,color:'var(--text2)'}} className="hide-sm">{dateStr}</span>
       </div>
@@ -1810,9 +1813,8 @@ function WhatsApp({ status, setStatus, user, addToast }) {
         if (data?.wa_status === 'conectado') {
           clearInterval(pollRef.current);
           setQrStep('conectado'); setStatus('conectado');
-          // Persiste status no localStorage com CNPJ limpo
-          const cnpjKey = user.cnpj.replace(/\D/g, '');
-          localStorage.setItem(`wa_status_${cnpjKey}`, 'conectado');
+          // Atualiza banco
+          try { await sb.from('usuarios').update({ wa_status: 'conectado' }).eq('cnpj', user.cnpj); } catch {}
           addToast('WhatsApp reconectado com sucesso!');
           setTimeout(() => { setReconectando(false); setQrStep('idle'); }, 3000);
         }
