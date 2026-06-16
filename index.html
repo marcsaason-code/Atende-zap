@@ -2054,10 +2054,15 @@ function WhatsApp({ status, setStatus, user, addToast }) {
                 e.stopPropagation();
                 if(!confirm('Remover esta conversa do sistema?')) return;
                 try {
+                  const telefone = c.telefone || c.jid?.replace('@s.whatsapp.net','');
+                  // Remove conversa e mensagens
                   await sb.from('wa_mensagens').delete().eq('cnpj',user.cnpj).eq('jid',c.jid);
                   await sb.from('wa_conversas').delete().eq('cnpj',user.cnpj).eq('jid',c.jid);
+                  // Finaliza atendimento no kanban
+                  await sb.from('atendimentos').update({status:'finalizado'}).eq('cnpj',user.cnpj).eq('telefone',telefone).neq('status','finalizado');
                   setConvs(p=>p.filter(x=>x.jid!==c.jid));
                   if(selectedJid===c.jid) setSelectedJid(null);
+                  addToast('Conversa removida e atendimento finalizado.');
                 } catch { addToast('Erro ao remover','error'); }
               }} title="Remover conversa"
                 style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',width:26,height:26,borderRadius:'50%',border:'none',background:'rgba(239,68,68,0.1)',color:'#ef4444',cursor:'pointer',display:'none',alignItems:'center',justifyContent:'center',fontSize:12,flexShrink:0}}
