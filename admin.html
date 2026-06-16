@@ -455,7 +455,7 @@ function Login({onLogin}){
       <div className="login-card fade-in" style={{textAlign:'center'}}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,marginBottom:28}}>
           <div className="login-badge">Painel Admin</div>
-          <img src="/assets/logo.png" alt="Atende+Zap" style={{height:48,objectFit:'contain'}}/>
+          <img src="/assets/logo.png" alt="Atende+Zap" style={{height:60,objectFit:'contain'}}/>
           <p className="login-sub" style={{margin:0}}>Acesso restrito à equipe de suporte interno.</p>
         </div>
         <form onSubmit={handle}>
@@ -481,7 +481,7 @@ function Sidebar({page,setPage,admin,onLogout,open,unreadCount}){
   return(
     <div className={`sidebar ${open?'open':''}`}>
       <div className="sidebar-logo">
-        <img src="/assets/logo.png" alt="Atende+Zap" style={{height:26,objectFit:'contain',maxWidth:120}}/>
+        <img src="/assets/logo.png" alt="Atende+Zap" style={{height:38,objectFit:'contain',maxWidth:160}}/>
         <span className="logo-badge" style={{marginLeft:'auto'}}>Admin</span>
       </div>
       <nav className="sidebar-nav">
