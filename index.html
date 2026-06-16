@@ -2004,7 +2004,15 @@ function WhatsApp({ status, setStatus, user, addToast }) {
         <div className="wa-conv-list">
           {filtered.length === 0 && <div style={{padding:24,textAlign:'center',color:'#667781',fontSize:13}}>Nenhuma conversa</div>}
           {filtered.map(c => (
-            <div key={c.jid} className={`wa-conv-item ${selectedJid===c.jid?'active':''}`} onClick={()=>{ setSelectedJid(c.jid); setConvs(p=>p.map(x=>x.jid===c.jid?{...x,unread:0}:x)); }}>
+            <div key={c.jid} className={`wa-conv-item ${selectedJid===c.jid?'active':''}`} onClick={async()=>{
+              setSelectedJid(c.jid);
+              // Zera badge localmente
+              setConvs(p=>p.map(x=>x.jid===c.jid?{...x,unread:0}:x));
+              // Zera no banco também
+              if ((c.unread||0) > 0) {
+                try { await sb.from('wa_conversas').update({unread:0}).eq('cnpj',user.cnpj).eq('jid',c.jid); } catch {}
+              }
+            }}>
               <div className="wa-avatar" style={{background: c.cor || getColor(c.nome)}}>
                 {c.foto_url ? <img src={c.foto_url} alt={c.nome}/> : initials(c.nome)}
               </div>
