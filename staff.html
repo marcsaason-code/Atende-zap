@@ -42,7 +42,7 @@
     --header-h: 64px;
   }
   html, body, #root { height: 100%; width: 100%; overflow: hidden; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
   /* ── Login ── */
   .login-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 40%, #f8fafc 100%); }
@@ -50,13 +50,13 @@
   .login-logo { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 28px; }
   .login-logo img { height: 48px; object-fit: contain; }
   .login-badge { background: var(--green-light); color: var(--green-dark); font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 99px; letter-spacing: 0.04em; }
-  .login-title { font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 600; color: var(--text); text-align: center; margin-bottom: 6px; }
+  .login-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 600; color: var(--text); text-align: center; margin-bottom: 6px; }
   .login-sub { font-size: 13px; color: var(--text3); text-align: center; margin-bottom: 24px; }
   .login-field { margin-bottom: 14px; }
   .login-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
-  .login-field input { width: 100%; padding: 13px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border .15s; }
+  .login-field input { width: 100%; padding: 13px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border .15s; }
   .login-field input:focus { border-color: var(--green); background: #fff; }
-  .login-btn { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Sora', sans-serif; cursor: pointer; transition: background .15s, transform .1s; margin-top: 8px; }
+  .login-btn { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: background .15s, transform .1s; margin-top: 8px; }
   .login-btn:hover { background: var(--green-dark); }
   .login-btn:active { transform: scale(0.98); }
   .login-btn:disabled { opacity: .6; }
@@ -93,7 +93,7 @@
   .ag-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; position: relative; }
   .ag-item:last-child { border-bottom: none; }
   .ag-item:active { background: var(--bg3); }
-  .ag-time { font-size: 13px; font-weight: 600; color: var(--green-dark); font-family: 'Sora', sans-serif; min-width: 44px; padding-top: 2px; }
+  .ag-time { font-size: 13px; font-weight: 600; color: var(--green-dark); font-family: 'Plus Jakarta Sans', sans-serif; min-width: 44px; padding-top: 2px; }
   .ag-info { flex: 1; min-width: 0; }
   .ag-nome { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ag-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
@@ -112,7 +112,7 @@
   .date-day.active { background: var(--green); border-color: var(--green); }
   .date-day.today { border-color: var(--green); }
   .date-day .d-name { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; }
-  .date-day .d-num { font-size: 18px; font-weight: 700; color: var(--text); font-family: 'Sora', sans-serif; }
+  .date-day .d-num { font-size: 18px; font-weight: 700; color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; }
   .date-day .d-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
   .date-day.active .d-name, .date-day.active .d-num { color: #fff; }
   .date-day.active .d-dot { background: rgba(255,255,255,0.7); }
@@ -122,13 +122,13 @@
   .modal-sheet { background: var(--bg2); border-radius: 24px 24px 0 0; width: 100%; max-width: 500px; padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; animation: slideUp .25s ease; }
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 99px; margin: 0 auto 20px; }
-  .modal-title { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 20px; }
+  .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 20px; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
-  .field input, .field select, .field textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border .15s; }
+  .field input, .field select, .field textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border .15s; }
   .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--green); background: #fff; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .btn-primary { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Sora', sans-serif; cursor: pointer; transition: background .15s; margin-top: 6px; }
+  .btn-primary { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: background .15s; margin-top: 6px; }
   .btn-primary:disabled { opacity: .5; }
   .btn-secondary { width: 100%; padding: 13px; background: var(--bg3); color: var(--text2); border: none; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 8px; }
 
@@ -145,7 +145,7 @@
   /* ── Dashboard ── */
   .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
   .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-sm); }
-  .metric-val { font-family: 'Sora', sans-serif; font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; }
+  .metric-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; }
   .metric-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
   .metric-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
 
@@ -261,7 +261,7 @@ function App() {
             <div className="header-role">{func.especialidade || 'Funcionário'}</div>
           </div>
         </div>
-        <img src="./assets/logo.png" alt="Atende+Zap" className="header-logo"/>
+        <img src="/assets/logo.png" alt="Atende+Zap" className="header-logo"/>
       </header>
 
       <div className="page-area">
@@ -321,7 +321,7 @@ function LoginPage({ onLogin }) {
     <div className="login-wrap">
       <div className="login-card fade-in">
         <div className="login-logo">
-          <img src="./assets/logo.png" alt="Atende+Zap"/>
+          <img src="/assets/logo.png" alt="Atende+Zap"/>
           <span className="login-badge">Área do Funcionário</span>
         </div>
         <p className="login-sub">Acesse sua agenda de atendimentos</p>
@@ -364,7 +364,7 @@ function HomePage({ func, agendamentos, agHoje, agPendentes, setPage }) {
       {/* Saudação */}
       <div style={{marginBottom:20}}>
         <div style={{fontSize:12,color:'var(--text3)',fontWeight:500,marginBottom:2}}>{diaSemana}, {hoje.getDate()} de {mes}</div>
-        <div style={{fontFamily:'Sora',fontSize:20,fontWeight:600,color:'var(--text)'}}>
+        <div style={{fontFamily:'Plus Jakarta Sans',fontSize:20,fontWeight:600,color:'var(--text)'}}>
           Olá, {func.nome?.split(' ')[0]}
         </div>
       </div>
@@ -629,7 +629,7 @@ function NovoPage({ func, servicos, agendamentos, setAgendamentos, addToast, set
 
   return (
     <div className="page fade-in">
-      <div style={{fontFamily:'Sora',fontSize:18,fontWeight:600,marginBottom:20}}>Novo agendamento</div>
+      <div style={{fontFamily:'Plus Jakarta Sans',fontSize:18,fontWeight:600,marginBottom:20}}>Novo agendamento</div>
 
       <div className="card" style={{padding:'16px'}}>
         <div className="field">
@@ -693,7 +693,7 @@ function PerfilPage({ func, onLogout, agendamentos }) {
           {func.nome?.slice(0,2).toUpperCase()}
         </div>
         <div style={{textAlign:'center'}}>
-          <div style={{fontFamily:'Sora',fontSize:18,fontWeight:600}}>{func.nome}</div>
+          <div style={{fontFamily:'Plus Jakarta Sans',fontSize:18,fontWeight:600}}>{func.nome}</div>
           <div style={{fontSize:13,color:'var(--text3)',marginTop:3}}>{func.especialidade || 'Funcionário'}</div>
           {func.crm && <div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>CRM: {func.crm}</div>}
         </div>
