@@ -1,6 +1,10 @@
 {
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "admin.atendemaiszap.com" }],
       "dest": "/admin.html"
