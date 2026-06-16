@@ -605,19 +605,21 @@ function App() {
 
   /* Verifica estado da instância Evolution ao logar */
   const checkWaStatus = useCallback(async (userData) => {
-    if (!userData.evolution_url || !userData.evolution_instance) return;
+    if (!userData.evolution_url || !userData.evolution_instance || !userData.cnpj) return;
     try {
-      const r = await fetch(
-        `${userData.evolution_url}/instance/connectionState/${userData.evolution_instance}`,
-        { headers: { apikey: userData.evolution_key || '' } }
-      );
-      const d = await r.json();
-      if (d?.instance?.state === 'open') {
-        setWaStatus('conectado');
-        addToast('WhatsApp já conectado!');
+      const PROXY = 'https://rhraigbapgpzvmcjbett.supabase.co/functions/v1/evolution-proxy';
+      const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4';
+      const r = await fetch(`${PROXY}?action=status&cnpj=${encodeURIComponent(userData.cnpj)}`, {
+        headers: { apikey: SB_ANON }
+      });
+      if (r.ok) {
+        const d = await r.json();
+        if (d?.instance?.state === 'open') {
+          setWaStatus('conectado');
+        }
       }
     } catch {}
-  }, [addToast]);
+  }, []);
 
   const handleLogin = async (userData) => {
     // Remove senha antes de salvar no localStorage
@@ -1798,10 +1800,12 @@ function WhatsApp({ status, setStatus, user, addToast }) {
     }
 
     /* Poll para verificar conexão */
+    const PROXY = 'https://rhraigbapgpzvmcjbett.supabase.co/functions/v1/evolution-proxy';
+    const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4';
     clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const r = await fetch(`${evUrl}/instance/connectionState/${evInstance}`, { headers: { apikey: evKey } });
+        const r = await fetch(`${PROXY}?action=status&cnpj=${encodeURIComponent(user.cnpj)}`, { headers: { apikey: SB_ANON } });
         const d = await r.json();
         if (d?.instance?.state === 'open') {
           clearInterval(pollRef.current);
