@@ -605,18 +605,12 @@ function App() {
 
   /* Verifica estado da instância Evolution ao logar */
   const checkWaStatus = useCallback(async (userData) => {
-    if (!userData.evolution_url || !userData.evolution_instance || !userData.cnpj) return;
+    if (!userData.cnpj) return;
     try {
-      const PROXY = 'https://rhraigbapgpzvmcjbett.supabase.co/functions/v1/evolution-proxy';
-      const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4';
-      const r = await fetch(`${PROXY}?action=status&cnpj=${encodeURIComponent(userData.cnpj)}`, {
-        headers: { apikey: SB_ANON }
-      });
-      if (r.ok) {
-        const d = await r.json();
-        if (d?.instance?.state === 'open') {
-          setWaStatus('conectado');
-        }
+      // Lê status de conexão direto do banco — atualizado pelo webhook
+      const { data } = await sb.from('usuarios').select('wa_status').eq('cnpj', userData.cnpj).single();
+      if (data?.wa_status === 'conectado') {
+        setWaStatus('conectado');
       }
     } catch {}
   }, []);
@@ -1799,15 +1793,12 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       setQrStep('idle'); setReconectando(false); return;
     }
 
-    /* Poll para verificar conexão */
-    const PROXY = 'https://rhraigbapgpzvmcjbett.supabase.co/functions/v1/evolution-proxy';
-    const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmFpZ2JhcGdwenZtY2piZXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTMyNjEsImV4cCI6MjA5NDg4OTI2MX0.QqhyeidTbXpmAHUJVxx3B5KbNyLr27wbr8H0cpCCld4';
+    /* Poll para verificar conexão — checa no banco a cada 4s */
     clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const r = await fetch(`${PROXY}?action=status&cnpj=${encodeURIComponent(user.cnpj)}`, { headers: { apikey: SB_ANON } });
-        const d = await r.json();
-        if (d?.instance?.state === 'open') {
+        const { data } = await sb.from('usuarios').select('wa_status').eq('cnpj', user.cnpj).single();
+        if (data?.wa_status === 'conectado') {
           clearInterval(pollRef.current);
           setQrStep('conectado'); setStatus('conectado');
           addToast('WhatsApp reconectado com sucesso!');
