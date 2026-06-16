@@ -606,11 +606,25 @@ function App() {
   /* Verifica estado da instância Evolution ao logar */
   const checkWaStatus = useCallback(async (userData) => {
     if (!userData.cnpj) return;
+    // 1. Restaura do localStorage imediatamente (sem flicker)
+    const cached = localStorage.getItem(`wa_status_${userData.cnpj}`);
+    if (cached === 'conectado') setWaStatus('conectado');
     try {
-      // Lê status de conexão direto do banco — atualizado pelo webhook
+      // 2. Confirma com o banco
       const { data } = await sb.from('usuarios').select('wa_status').eq('cnpj', userData.cnpj).single();
       if (data?.wa_status === 'conectado') {
         setWaStatus('conectado');
+        localStorage.setItem(`wa_status_${userData.cnpj}`, 'conectado');
+      } else {
+        // Banco diz desconectado mas pode ser lag — mantém o cache por 5min
+        const lastConnected = localStorage.getItem(`wa_status_time_${userData.cnpj}`);
+        const fiveMin = 5 * 60 * 1000;
+        if (lastConnected && Date.now() - Number(lastConnected) < fiveMin) {
+          setWaStatus('conectado'); // mantém conectado por até 5min
+        } else {
+          setWaStatus('desconectado');
+          localStorage.removeItem(`wa_status_${userData.cnpj}`);
+        }
       }
     } catch {}
   }, []);
@@ -627,6 +641,10 @@ function App() {
 
   const handleLogout = () => {
     try { sb.from('logs_acesso').insert([{ cnpj: user?.cnpj, tipo:'cliente', evento:'logout' }]); } catch {}
+    if (user?.cnpj) {
+      localStorage.removeItem(`wa_status_${user.cnpj}`);
+      localStorage.removeItem(`wa_status_time_${user.cnpj}`);
+    }
     setUser(null);
     localStorage.removeItem('atende_user');
     setAtendimentos([]);
@@ -1801,6 +1819,9 @@ function WhatsApp({ status, setStatus, user, addToast }) {
         if (data?.wa_status === 'conectado') {
           clearInterval(pollRef.current);
           setQrStep('conectado'); setStatus('conectado');
+          // Persiste status no localStorage
+          localStorage.setItem(`wa_status_${user.cnpj}`, 'conectado');
+          localStorage.setItem(`wa_status_time_${user.cnpj}`, String(Date.now()));
           addToast('WhatsApp reconectado com sucesso!');
           setTimeout(() => { setReconectando(false); setQrStep('idle'); }, 3000);
         }
