@@ -1047,50 +1047,125 @@ function Dashboard({ atendimentos, agendamentos, setPage, funcionarios }) {
           </div>
         </div>
       </div>
-      {/* Gráfico atendimentos por funcionário */}
-      {funcionarios.length > 0 && (
-        <div className="dash-card" style={{marginTop:20}}>
-          <div className="dash-card-header">
-            <span className="dash-card-title">Atendimentos por responsável</span>
-            <div style={{display:'flex',gap:6}}>
-              {[['hoje','Hoje'],['semana','Semana'],['mes','Mês']].map(([v,l])=>(
-                <button key={v} className={`chart-filter-btn ${chartFiltro===v?'active':''}`} onClick={()=>setChartFiltro(v)}>{l}</button>
+      {/* ── Gráfico de barras: atendimentos do mês por status ── */}
+      {(() => {
+        const agora = new Date();
+        const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+        const doMes = atendimentos.filter(a => a.created_at && new Date(a.created_at) >= inicioMes);
+        const statusConfig = [
+          { key: 'novo',       label: 'Novo',           color: '#3b82f6' },
+          { key: 'atendendo',  label: 'Em atendimento', color: '#f59e0b' },
+          { key: 'pendente',   label: 'Pendente',       color: '#8b5cf6' },
+          { key: 'agendado',   label: 'Agendado',       color: '#0891b2' },
+          { key: 'finalizado', label: 'Finalizado',     color: '#22c55e' },
+        ];
+        const counts = statusConfig.map(s => ({ ...s, val: doMes.filter(a => a.status === s.key).length }));
+        const max = Math.max(...counts.map(c => c.val), 1);
+        const total = counts.reduce((acc, c) => acc + c.val, 0);
+        const mesNome = agora.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+        return (
+          <div className="dash-card" style={{marginTop:20}}>
+            <div className="dash-card-header">
+              <span className="dash-card-title">Atendimentos do mês — {mesNome}</span>
+              <span style={{fontSize:12,color:'var(--text3)',fontWeight:500}}>{total} total</span>
+            </div>
+            <div style={{padding:'20px 20px 16px'}}>
+              {counts.map(({ key, label, color, val }) => (
+                <div key={key} style={{marginBottom:12}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{width:8,height:8,borderRadius:'50%',background:color,display:'inline-block',flexShrink:0}}/>
+                      <span style={{fontSize:12,color:'var(--text2)',fontWeight:500}}>{label}</span>
+                    </div>
+                    <span style={{fontSize:12,fontWeight:600,color:'var(--text)'}}>{val}</span>
+                  </div>
+                  <div style={{height:22,background:'var(--bg3)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)'}}>
+                    <div style={{height:'100%',width:`${(val/max)*100}%`,background:color,borderRadius:6,transition:'width .6s ease',minWidth:val>0?4:0}}/>
+                  </div>
+                </div>
               ))}
+              {total === 0 && <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'12px 0'}}>Nenhum atendimento este mês</div>}
             </div>
           </div>
-          <div style={{padding:'16px 20px'}}>
-            {(() => {
-              const hoje = new Date();
-              const filtrado = agendamentos.filter(a => {
-                if (!a.funcionario_nome) return false;
-                const d = new Date(a.data+'T00:00');
-                if (chartFiltro==='hoje') return d.toDateString()===hoje.toDateString();
-                if (chartFiltro==='semana') { const s=new Date(hoje); s.setDate(hoje.getDate()-7); return d>=s; }
-                const m=new Date(hoje); m.setDate(1); return d>=m;
-              });
-              const contagem = {};
-              filtrado.forEach(a => { contagem[a.funcionario_nome] = (contagem[a.funcionario_nome]||0)+1; });
-              // Inclui funcionários cadastrados mesmo sem atendimentos
-              funcionarios.filter(f=>f.ativo).forEach(f => { if(!contagem[f.nome]) contagem[f.nome]=0; });
-              const sorted = Object.entries(contagem).sort((a,b)=>b[1]-a[1]);
-              const max = sorted[0]?.[1] || 1;
-              const colors = ['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#0891b2'];
-              if (sorted.every(([,v])=>v===0)) return <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'20px 0'}}>Nenhum agendamento no período</div>;
-              return sorted.map(([nome,val],i) => (
-                <div key={nome} className="chart-bar-wrap">
-                  <div className="chart-bar-label" title={nome}>{nome}</div>
-                  <div className="chart-bar-track">
-                    <div className="chart-bar-fill" style={{width:`${max>0?(val/max)*100:0}%`,background:colors[i%colors.length],minWidth:val>0?'32px':0}}>
-                      {val>0 && <span className="chart-bar-val">{val}</span>}
+        );
+      })()}
+
+      {/* ── Gráfico de pizza: atendimentos por responsável ── */}
+      {funcionarios.length > 0 && (() => {
+        const agora = new Date();
+        const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+        const doMes = atendimentos.filter(a => a.created_at && new Date(a.created_at) >= inicioMes);
+        const colors = ['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#0891b2','#ec4899','#14b8a6'];
+        
+        const contagem = {};
+        doMes.forEach(a => {
+          const nome = a.responsavel || a.funcionario_nome || 'Sem responsável';
+          contagem[nome] = (contagem[nome]||0)+1;
+        });
+        funcionarios.filter(f=>f.ativo).forEach(f => { if(!contagem[f.nome]) contagem[f.nome]=0; });
+        const dados = Object.entries(contagem).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
+        const total = dados.reduce((acc,[,v])=>acc+v,0);
+
+        // Calcula segmentos do SVG pizza
+        const raio = 60, cx = 80, cy = 80;
+        let angulo = -Math.PI / 2;
+        const segmentos = dados.map(([nome, val], i) => {
+          const perc = total > 0 ? val/total : 0;
+          const angFim = angulo + perc * 2 * Math.PI;
+          const x1 = cx + raio * Math.cos(angulo);
+          const y1 = cy + raio * Math.sin(angulo);
+          const x2 = cx + raio * Math.cos(angFim);
+          const y2 = cy + raio * Math.sin(angFim);
+          const largeArc = perc > 0.5 ? 1 : 0;
+          const path = `M ${cx} ${cy} L ${x1} ${y1} A ${raio} ${raio} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+          const seg = { nome, val, perc, path, color: colors[i%colors.length] };
+          angulo = angFim;
+          return seg;
+        });
+
+        return (
+          <div className="dash-card" style={{marginTop:20}}>
+            <div className="dash-card-header">
+              <span className="dash-card-title">Atendimentos por responsável</span>
+              <span style={{fontSize:12,color:'var(--text3)',fontWeight:500}}>{total} total</span>
+            </div>
+            {total === 0 ? (
+              <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'24px'}}>Nenhum atendimento com responsável este mês</div>
+            ) : (
+              <div style={{padding:'16px 20px',display:'flex',gap:24,alignItems:'center',flexWrap:'wrap'}}>
+                {/* Pizza SVG */}
+                <svg width="160" height="160" viewBox="0 0 160 160" style={{flexShrink:0}}>
+                  {segmentos.length === 1 ? (
+                    <circle cx={cx} cy={cy} r={raio} fill={segmentos[0].color}/>
+                  ) : (
+                    segmentos.map((s,i) => <path key={i} d={s.path} fill={s.color} stroke="#fff" strokeWidth="2"/>)
+                  )}
+                  {/* Círculo central (donut) */}
+                  <circle cx={cx} cy={cy} r={35} fill="var(--bg2)"/>
+                  <text x={cx} y={cy-6} textAnchor="middle" fontSize="18" fontWeight="700" fill="var(--text)" fontFamily="Plus Jakarta Sans">{total}</text>
+                  <text x={cx} y={cy+10} textAnchor="middle" fontSize="9" fill="var(--text3)" fontFamily="Plus Jakarta Sans">atendimentos</text>
+                </svg>
+                {/* Legenda */}
+                <div style={{flex:1,minWidth:160}}>
+                  {segmentos.map((s,i) => (
+                    <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:10}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{width:10,height:10,borderRadius:'50%',background:s.color,display:'inline-block',flexShrink:0}}/>
+                        <span style={{fontSize:12,color:'var(--text2)',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:130}}>{s.nome}</span>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                        <span style={{fontSize:12,fontWeight:700,color:'var(--text)'}}>{s.val}</span>
+                        <span style={{fontSize:10,color:'var(--text3)'}}>({Math.round(s.perc*100)}%)</span>
+                      </div>
                     </div>
-                  </div>
-                  {val===0 && <span style={{fontSize:11,color:'var(--text3)'}}>0</span>}
+                  ))}
                 </div>
-              ));
-            })()}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -1771,51 +1846,71 @@ function WhatsApp({ status, setStatus, user, addToast }) {
         await sb.from('wa_conversas').upsert(conversas, { onConflict: 'cnpj,jid', ignoreDuplicates: false });
       }
 
-      // 3. Para cada conversa busca últimas 100 mensagens
+      // 3. Busca todas as mensagens sem filtro por conversa (paginado)
       let totalMsgs = 0;
-      for (let i = 0; i < chatsFiltrados.length; i++) {
-        const chat = chatsFiltrados[i];
-        setSyncProgress(`Mensagens ${i + 1}/${chatsFiltrados.length}: ${chat.name || chat.id.split('@')[0]}...`);
-        try {
-          const rMsgs = await fetch(`${evUrl}/chat/findMessages/${evInstance}`, {
-            method: 'POST',
-            headers: { apikey: evKey, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              where: { key: { remoteJid: chat.id } },
-              limit: 100,
-            })
-          });
-          const msgsData = await rMsgs.json();
-          const mensagens = (msgsData?.messages?.records || msgsData?.records || msgsData || []).filter(m => m?.key?.id);
+      setSyncProgress('Buscando mensagens...');
+      try {
+        // Busca página 1
+        const rMsgs1 = await fetch(`${evUrl}/chat/findMessages/${evInstance}`, {
+          method: 'POST',
+          headers: { apikey: evKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 100 })
+        });
+        const msgsData1 = await rMsgs1.json();
+        const totalPages = msgsData1?.messages?.pages || 1;
+        let todasMensagens = [...(msgsData1?.messages?.records || [])];
 
-          if (mensagens.length > 0) {
-            const rows = mensagens.map(m => {
-              let tipo = 'texto', conteudo = '', midia_url = '';
-              if (m.message?.conversation) conteudo = m.message.conversation;
-              else if (m.message?.extendedTextMessage?.text) conteudo = m.message.extendedTextMessage.text;
-              else if (m.message?.imageMessage) { tipo = 'imagem'; conteudo = m.message.imageMessage.caption || 'Imagem'; midia_url = m.message.imageMessage.url || ''; }
-              else if (m.message?.audioMessage) { tipo = 'audio'; conteudo = 'Áudio'; }
-              else if (m.message?.documentMessage) { tipo = 'documento'; conteudo = m.message.documentMessage.fileName || 'Documento'; }
-              else if (m.message?.videoMessage) { tipo = 'video'; conteudo = m.message.videoMessage.caption || 'Vídeo'; }
-              else conteudo = '[mensagem não suportada]';
-
-              return {
-                cnpj: user.cnpj,
-                jid: chat.id,
-                msg_id: m.key?.id,
-                de_mim: m.key?.fromMe || false,
-                tipo, conteudo, midia_url,
-                status: 'entregue',
-                created_at: m.messageTimestamp ? new Date(Number(m.messageTimestamp) * 1000).toISOString() : new Date().toISOString(),
-              };
+        // Busca páginas restantes
+        for (let page = 2; page <= Math.min(totalPages, 10); page++) {
+          setSyncProgress(`Buscando mensagens página ${page}/${totalPages}...`);
+          try {
+            const r = await fetch(`${evUrl}/chat/findMessages/${evInstance}`, {
+              method: 'POST',
+              headers: { apikey: evKey, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ limit: 100, page })
             });
+            const d = await r.json();
+            todasMensagens = [...todasMensagens, ...(d?.messages?.records || [])];
+          } catch {}
+          await new Promise(r => setTimeout(r, 200));
+        }
 
-            await sb.from('wa_mensagens').upsert(rows, { onConflict: 'msg_id', ignoreDuplicates: true });
-            totalMsgs += rows.length;
-          }
-        } catch {}
-        // Pequena pausa para não sobrecarregar a Evolution
-        await new Promise(r => setTimeout(r, 200));
+        setSyncProgress(`Salvando ${todasMensagens.length} mensagens...`);
+
+        // Processa e salva mensagens
+        const rows = todasMensagens
+          .filter(m => m?.key?.id)
+          .map(m => {
+            const jidReal = m.key?.remoteJidAlt || m.key?.remoteJid || '';
+            let tipo = 'texto', conteudo = '', midia_url = '';
+            if (m.message?.conversation) conteudo = m.message.conversation;
+            else if (m.message?.extendedTextMessage?.text) conteudo = m.message.extendedTextMessage.text;
+            else if (m.message?.imageMessage) { tipo = 'imagem'; conteudo = m.message.imageMessage.caption || 'Imagem'; midia_url = m.message.imageMessage.url || ''; }
+            else if (m.message?.audioMessage) { tipo = 'audio'; conteudo = 'Áudio'; }
+            else if (m.message?.documentMessage) { tipo = 'documento'; conteudo = m.message.documentMessage.fileName || 'Documento'; }
+            else if (m.message?.videoMessage) { tipo = 'video'; conteudo = m.message.videoMessage.caption || 'Vídeo'; }
+            else conteudo = '[mensagem não suportada]';
+
+            return {
+              cnpj: user.cnpj,
+              jid: jidReal,
+              msg_id: m.key?.id,
+              de_mim: m.key?.fromMe || false,
+              tipo, conteudo, midia_url,
+              status: 'entregue',
+              created_at: m.messageTimestamp ? new Date(Number(m.messageTimestamp) * 1000).toISOString() : new Date().toISOString(),
+            };
+          })
+          .filter(r => r.jid && !r.jid.includes('@broadcast'));
+
+        // Salva em lotes de 50
+        for (let i = 0; i < rows.length; i += 50) {
+          const lote = rows.slice(i, i + 50);
+          await sb.from('wa_mensagens').upsert(lote, { onConflict: 'msg_id', ignoreDuplicates: true });
+        }
+        totalMsgs = rows.length;
+      } catch (e) {
+        console.error('Erro ao buscar mensagens:', e);
       }
 
       // 4. Recarrega conversas do banco
