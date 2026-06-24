@@ -959,6 +959,143 @@ function Dashboard({ atendimentos, agendamentos, setPage, funcionarios }) {
         ))}
       </div>
 
+      {/* ── Gráficos lado a lado ── */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:24}}>
+
+        {/* Gráfico de colunas: atendimentos do mês por status */}
+        {(() => {
+          const agora = new Date();
+          const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+          const doMes = atendimentos.filter(a => a.created_at && new Date(a.created_at) >= inicioMes);
+          const statusConfig = [
+            { key: 'novo',       label: 'Novo',       color: '#3b82f6' },
+            { key: 'atendendo',  label: 'Atendendo',  color: '#f59e0b' },
+            { key: 'pendente',   label: 'Pendente',   color: '#8b5cf6' },
+            { key: 'agendado',   label: 'Agendado',   color: '#0891b2' },
+            { key: 'finalizado', label: 'Finalizado', color: '#22c55e' },
+          ];
+          const counts = statusConfig.map(s => ({ ...s, val: doMes.filter(a => a.status === s.key).length }));
+          const max = Math.max(...counts.map(c => c.val), 1);
+          const total = counts.reduce((acc, c) => acc + c.val, 0);
+          const mesNome = agora.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          const chartH = 140;
+
+          return (
+            <div className="dash-card" style={{margin:0}}>
+              <div className="dash-card-header">
+                <span className="dash-card-title">Atendimentos — {mesNome}</span>
+                <span style={{fontSize:11,color:'var(--text3)',fontWeight:500}}>{total} total</span>
+              </div>
+              <div style={{padding:'16px 16px 12px'}}>
+                {total === 0 ? (
+                  <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'24px 0'}}>Nenhum atendimento este mês</div>
+                ) : (
+                  <>
+                    <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-around',height:chartH,gap:4}}>
+                      {counts.map(({ key, label, color, val }) => {
+                        const pct = max > 0 ? (val / max) : 0;
+                        const barH = Math.max(pct * chartH, val > 0 ? 8 : 0);
+                        return (
+                          <div key={key} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,flex:1}}>
+                            <span style={{fontSize:12,fontWeight:700,color:'var(--text)',minHeight:18,textAlign:'center'}}>{val > 0 ? val : ''}</span>
+                            <div style={{width:'100%',height:chartH - 18,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+                              <div style={{width:'65%',height:barH,background:color,borderRadius:'5px 5px 2px 2px',transition:'height .6s ease',boxShadow:val>0?`0 3px 10px ${color}40`:'none',position:'relative'}}>
+                                {val > 0 && <div style={{position:'absolute',top:0,left:0,right:0,height:5,background:'rgba(255,255,255,0.25)',borderRadius:'5px 5px 0 0'}}/>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{height:1,background:'var(--border)',margin:'8px 0'}}/>
+                    <div style={{display:'flex',justifyContent:'space-around'}}>
+                      {counts.map(({ key, label, color }) => (
+                        <div key={key} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+                          <span style={{width:7,height:7,borderRadius:'50%',background:color,display:'inline-block'}}/>
+                          <span style={{fontSize:9,color:'var(--text3)',fontWeight:500,textAlign:'center'}}>{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Gráfico de pizza (donut): atendimentos por responsável */}
+        {(() => {
+          const agora = new Date();
+          const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+          const doMes = atendimentos.filter(a => a.created_at && new Date(a.created_at) >= inicioMes);
+          const colors = ['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#0891b2','#ec4899','#14b8a6'];
+
+          const contagem = {};
+          doMes.forEach(a => {
+            const nome = a.responsavel || a.funcionario_nome || 'Sem responsável';
+            contagem[nome] = (contagem[nome]||0)+1;
+          });
+          if (funcionarios.length > 0) funcionarios.filter(f=>f.ativo).forEach(f => { if(!contagem[f.nome]) contagem[f.nome]=0; });
+          const dados = Object.entries(contagem).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
+          const total = dados.reduce((acc,[,v])=>acc+v,0);
+
+          const raio = 55, cx = 65, cy = 65;
+          let angulo = -Math.PI / 2;
+          const segmentos = dados.map(([nome, val], i) => {
+            const perc = total > 0 ? val/total : 0;
+            const angFim = angulo + perc * 2 * Math.PI;
+            const x1 = cx + raio * Math.cos(angulo);
+            const y1 = cy + raio * Math.sin(angulo);
+            const x2 = cx + raio * Math.cos(angFim);
+            const y2 = cy + raio * Math.sin(angFim);
+            const largeArc = perc > 0.5 ? 1 : 0;
+            const path = `M ${cx} ${cy} L ${x1} ${y1} A ${raio} ${raio} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+            const seg = { nome, val, perc, path, color: colors[i%colors.length] };
+            angulo = angFim;
+            return seg;
+          });
+
+          return (
+            <div className="dash-card" style={{margin:0}}>
+              <div className="dash-card-header">
+                <span className="dash-card-title">Por responsável</span>
+                <span style={{fontSize:11,color:'var(--text3)',fontWeight:500}}>{total} total</span>
+              </div>
+              {total === 0 ? (
+                <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'40px 16px'}}>Nenhum atendimento com responsável</div>
+              ) : (
+                <div style={{padding:'12px 16px',display:'flex',gap:16,alignItems:'center'}}>
+                  <svg width="130" height="130" viewBox="0 0 130 130" style={{flexShrink:0}}>
+                    {segmentos.length === 1
+                      ? <circle cx={cx} cy={cy} r={raio} fill={segmentos[0].color}/>
+                      : segmentos.map((s,i) => <path key={i} d={s.path} fill={s.color} stroke="#fff" strokeWidth="1.5"/>)
+                    }
+                    <circle cx={cx} cy={cy} r={32} fill="var(--bg2)"/>
+                    <text x={cx} y={cy-4} textAnchor="middle" fontSize="18" fontWeight="700" fill="var(--text)" fontFamily="Plus Jakarta Sans">{total}</text>
+                    <text x={cx} y={cy+11} textAnchor="middle" fontSize="8" fill="var(--text3)" fontFamily="Plus Jakarta Sans">atendimentos</text>
+                  </svg>
+                  <div style={{flex:1,minWidth:0}}>
+                    {segmentos.map((s,i) => (
+                      <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,marginBottom:8}}>
+                        <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+                          <span style={{width:8,height:8,borderRadius:'50%',background:s.color,flexShrink:0,display:'inline-block'}}/>
+                          <span style={{fontSize:11,color:'var(--text2)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.nome}</span>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+                          <span style={{fontSize:12,fontWeight:700,color:'var(--text)'}}>{s.val}</span>
+                          <span style={{fontSize:9,color:'var(--text3)'}}>({Math.round(s.perc*100)}%)</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+      </div>
+
       {/* Grid inferior */}
       <div className="dash-bottom">
         {/* Feed de atividades — card e itens clicáveis */}
@@ -1047,125 +1184,6 @@ function Dashboard({ atendimentos, agendamentos, setPage, funcionarios }) {
           </div>
         </div>
       </div>
-      {/* ── Gráfico de barras: atendimentos do mês por status ── */}
-      {(() => {
-        const agora = new Date();
-        const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-        const doMes = atendimentos.filter(a => a.created_at && new Date(a.created_at) >= inicioMes);
-        const statusConfig = [
-          { key: 'novo',       label: 'Novo',           color: '#3b82f6' },
-          { key: 'atendendo',  label: 'Em atendimento', color: '#f59e0b' },
-          { key: 'pendente',   label: 'Pendente',       color: '#8b5cf6' },
-          { key: 'agendado',   label: 'Agendado',       color: '#0891b2' },
-          { key: 'finalizado', label: 'Finalizado',     color: '#22c55e' },
-        ];
-        const counts = statusConfig.map(s => ({ ...s, val: doMes.filter(a => a.status === s.key).length }));
-        const max = Math.max(...counts.map(c => c.val), 1);
-        const total = counts.reduce((acc, c) => acc + c.val, 0);
-        const mesNome = agora.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-
-        return (
-          <div className="dash-card" style={{marginTop:20}}>
-            <div className="dash-card-header">
-              <span className="dash-card-title">Atendimentos do mês — {mesNome}</span>
-              <span style={{fontSize:12,color:'var(--text3)',fontWeight:500}}>{total} total</span>
-            </div>
-            <div style={{padding:'20px 20px 16px'}}>
-              {counts.map(({ key, label, color, val }) => (
-                <div key={key} style={{marginBottom:12}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{width:8,height:8,borderRadius:'50%',background:color,display:'inline-block',flexShrink:0}}/>
-                      <span style={{fontSize:12,color:'var(--text2)',fontWeight:500}}>{label}</span>
-                    </div>
-                    <span style={{fontSize:12,fontWeight:600,color:'var(--text)'}}>{val}</span>
-                  </div>
-                  <div style={{height:22,background:'var(--bg3)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)'}}>
-                    <div style={{height:'100%',width:`${(val/max)*100}%`,background:color,borderRadius:6,transition:'width .6s ease',minWidth:val>0?4:0}}/>
-                  </div>
-                </div>
-              ))}
-              {total === 0 && <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'12px 0'}}>Nenhum atendimento este mês</div>}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Gráfico de pizza: atendimentos por responsável ── */}
-      {funcionarios.length > 0 && (() => {
-        const agora = new Date();
-        const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-        const doMes = atendimentos.filter(a => a.created_at && new Date(a.created_at) >= inicioMes);
-        const colors = ['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#0891b2','#ec4899','#14b8a6'];
-        
-        const contagem = {};
-        doMes.forEach(a => {
-          const nome = a.responsavel || a.funcionario_nome || 'Sem responsável';
-          contagem[nome] = (contagem[nome]||0)+1;
-        });
-        funcionarios.filter(f=>f.ativo).forEach(f => { if(!contagem[f.nome]) contagem[f.nome]=0; });
-        const dados = Object.entries(contagem).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
-        const total = dados.reduce((acc,[,v])=>acc+v,0);
-
-        // Calcula segmentos do SVG pizza
-        const raio = 60, cx = 80, cy = 80;
-        let angulo = -Math.PI / 2;
-        const segmentos = dados.map(([nome, val], i) => {
-          const perc = total > 0 ? val/total : 0;
-          const angFim = angulo + perc * 2 * Math.PI;
-          const x1 = cx + raio * Math.cos(angulo);
-          const y1 = cy + raio * Math.sin(angulo);
-          const x2 = cx + raio * Math.cos(angFim);
-          const y2 = cy + raio * Math.sin(angFim);
-          const largeArc = perc > 0.5 ? 1 : 0;
-          const path = `M ${cx} ${cy} L ${x1} ${y1} A ${raio} ${raio} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-          const seg = { nome, val, perc, path, color: colors[i%colors.length] };
-          angulo = angFim;
-          return seg;
-        });
-
-        return (
-          <div className="dash-card" style={{marginTop:20}}>
-            <div className="dash-card-header">
-              <span className="dash-card-title">Atendimentos por responsável</span>
-              <span style={{fontSize:12,color:'var(--text3)',fontWeight:500}}>{total} total</span>
-            </div>
-            {total === 0 ? (
-              <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'24px'}}>Nenhum atendimento com responsável este mês</div>
-            ) : (
-              <div style={{padding:'16px 20px',display:'flex',gap:24,alignItems:'center',flexWrap:'wrap'}}>
-                {/* Pizza SVG */}
-                <svg width="160" height="160" viewBox="0 0 160 160" style={{flexShrink:0}}>
-                  {segmentos.length === 1 ? (
-                    <circle cx={cx} cy={cy} r={raio} fill={segmentos[0].color}/>
-                  ) : (
-                    segmentos.map((s,i) => <path key={i} d={s.path} fill={s.color} stroke="#fff" strokeWidth="2"/>)
-                  )}
-                  {/* Círculo central (donut) */}
-                  <circle cx={cx} cy={cy} r={35} fill="var(--bg2)"/>
-                  <text x={cx} y={cy-6} textAnchor="middle" fontSize="18" fontWeight="700" fill="var(--text)" fontFamily="Plus Jakarta Sans">{total}</text>
-                  <text x={cx} y={cy+10} textAnchor="middle" fontSize="9" fill="var(--text3)" fontFamily="Plus Jakarta Sans">atendimentos</text>
-                </svg>
-                {/* Legenda */}
-                <div style={{flex:1,minWidth:160}}>
-                  {segmentos.map((s,i) => (
-                    <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:10}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{width:10,height:10,borderRadius:'50%',background:s.color,display:'inline-block',flexShrink:0}}/>
-                        <span style={{fontSize:12,color:'var(--text2)',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:130}}>{s.nome}</span>
-                      </div>
-                      <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
-                        <span style={{fontSize:12,fontWeight:700,color:'var(--text)'}}>{s.val}</span>
-                        <span style={{fontSize:10,color:'var(--text3)'}}>({Math.round(s.perc*100)}%)</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
     </div>
   );
 }
