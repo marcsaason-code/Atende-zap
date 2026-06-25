@@ -593,13 +593,13 @@ function App() {
         sb.from('servicos').select('*').eq('cnpj', cnpj).order('nome'),
       ]);
       if (ats?.length) setAtendimentos(prev => {
-        const prevStr = JSON.stringify(prev.map(a=>a.id+a.status));
-        const newStr = JSON.stringify(ats.map(a=>a.id+a.status));
+        const prevStr = JSON.stringify(prev);
+        const newStr = JSON.stringify(ats);
         return prevStr === newStr ? prev : ats;
       }); else if (!silent) setAtendimentos(mockAtendimentos);
       if (ags?.length) setAgendamentos(prev => {
-        const prevStr = JSON.stringify(prev.map(a=>a.id+a.status));
-        const newStr = JSON.stringify(ags.map(a=>a.id+a.status));
+        const prevStr = JSON.stringify(prev);
+        const newStr = JSON.stringify(ags);
         return prevStr === newStr ? prev : ags;
       }); else if (!silent) setAgendamentos(mockAgendamentos);
       if (funcs) setFuncionarios(funcs);
@@ -1108,7 +1108,7 @@ function Dashboard({ atendimentos, agendamentos, setPage, funcionarios }) {
             <div style={{padding:'24px',textAlign:'center',color:'var(--text3)',fontSize:13}}>Nenhum atendimento ainda</div>
           )}
           {atendimentos.slice(0, 5).map(a => {
-            const initials = a.nome.split(' ').map(x=>x[0]).join('').slice(0,2);
+            const initials = (a.nome || '?').split(' ').map(x=>x[0]).join('').slice(0,2);
             const avatarCls = a.status==='novo'?'blue':a.status==='atendendo'?'warn':'green';
             return (
               <div key={a.id} className="activity-item" style={{cursor:'pointer'}}
@@ -1215,7 +1215,7 @@ function Atendimentos({ data, setData, addToast, agendamentos, setAgendamentos, 
 
   const nextStatus = { novo: 'atendendo', atendendo: 'finalizado', pendente: 'atendendo', agendado: 'finalizado' };
 
-  const initials = (nome) => nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+  const initials = (nome) => (nome || '?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
 
   return (
     <div>
@@ -1453,6 +1453,7 @@ function Agenda({ data, setData, addToast, user, funcionarios, categorias, servi
     </body></html>`;
 
     const w = window.open('','_blank');
+    if (!w) { addToast('Permita pop-ups para exportar o PDF.', 'error'); return; }
     w.document.write(html);
     w.document.close();
   };
@@ -1493,10 +1494,17 @@ function Agenda({ data, setData, addToast, user, funcionarios, categorias, servi
       try { await sb.from('agendamentos').update(form).eq('id', editItem.id); } catch {}
       addToast('Agendamento atualizado!');
     } else {
-      const newItem = { ...form, id: Date.now() };
-      setData(p => [...p, newItem]);
-      try { await sb.from('agendamentos').insert([{ ...form, cnpj: user?.cnpj || '' }]); } catch {}
-      addToast('Agendamento criado!');
+      try {
+        // Pega o registro salvo (com id real do banco) para evitar id falso e duplicação
+        const { data: saved, error } = await sb.from('agendamentos').insert([{ ...form, cnpj: user?.cnpj || '' }]).select().single();
+        if (error) throw error;
+        setData(p => p.some(a => a.id === saved.id) ? p : [...p, saved]);
+        addToast('Agendamento criado!');
+      } catch {
+        // Fallback offline: id temporário (será reconciliado no próximo load)
+        setData(p => [...p, { ...form, id: `temp_${Date.now()}` }]);
+        addToast('Agendamento criado!');
+      }
     }
     setShowModal(false); setEditItem(null);
   };
@@ -1825,6 +1833,22 @@ function WhatsApp({ status, setStatus, user, addToast }) {
   const evKey = user?.evolution_key || '';
   const hasEvolution = !!(evUrl && evInstance);
 
+  /* Identificador ÚNICO e estável de um contato.
+     Retorna o NÚMERO de telefone quando disponível (em qualquer campo/formato),
+     ou o jid normalizado quando não há número (contatos @lid/CUID).
+     Usado para excluir e para filtrar ignoradas de forma consistente,
+     independente de o registro vir da Evolution (id/remoteJid) ou do banco (jid/telefone). */
+  const idContato = (obj) => {
+    if (!obj) return '';
+    const campos = [obj.telefone, obj.remoteJidAlt, obj.senderPn, obj.remoteJid, obj.jid, obj.id];
+    for (const f of campos) {
+      const n = (f || '').toString().split('@')[0].replace(/\D/g, '');
+      if (/^\d{10,15}$/.test(n)) return n;
+    }
+    const raw = (obj.remoteJid || obj.jid || obj.id || '').toString();
+    return raw.replace('@c.us', '@s.whatsapp.net');
+  };
+
   /* ── Sincronização completa com a Evolution ── */
   const sincronizarTudo = async (silent = false) => {
     if (!hasEvolution || syncingRef.current) return;
@@ -1866,12 +1890,14 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       const chatsValidos = chats.filter(c => c.id && !c.id.includes('@broadcast') && !c.id.includes('@newsletter'));
       setSyncProgress(`Sincronizando ${chatsValidos.length} conversas...`);
 
-      // Busca conversas ignoradas (deletadas manualmente)
+      // Busca conversas ignoradas (deletadas manualmente).
+      // Normaliza cada chave ignorada com idContato p/ casar por número (retrocompatível
+      // com registros antigos que guardaram o jid completo).
       const { data: ignoradas } = await sb.from('wa_conversas_ignoradas').select('jid').eq('cnpj', user.cnpj);
-      const jidsIgnorados = new Set((ignoradas || []).map(i => i.jid));
+      const chavesIgnoradas = new Set((ignoradas || []).map(i => idContato({ jid: i.jid })));
 
-      // Filtra conversas ignoradas
-      const chatsFiltrados = chatsValidos.filter(c => !jidsIgnorados.has(c.id));
+      // Filtra conversas ignoradas comparando pela chave de contato (número ou jid)
+      const chatsFiltrados = chatsValidos.filter(c => !chavesIgnoradas.has(idContato(c)));
 
       // Normaliza JID: converte @c.us → @s.whatsapp.net para evitar duplicatas no banco
       const normalizeJid = (jid) => jid ? jid.replace('@c.us', '@s.whatsapp.net') : jid;
@@ -1973,7 +1999,7 @@ function WhatsApp({ status, setStatus, user, addToast }) {
               created_at: m.messageTimestamp ? new Date(Number(m.messageTimestamp) * 1000).toISOString() : new Date().toISOString(),
             };
           })
-          .filter(r => r.jid && !r.jid.includes('@broadcast'));
+          .filter(r => r.jid && !r.jid.includes('@broadcast') && !chavesIgnoradas.has(idContato({ jid: r.jid })));
 
         // Salva em lotes de 50
         for (let i = 0; i < rows.length; i += 50) {
@@ -2011,13 +2037,13 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       if (!user?.cnpj) return;
       setLoadingConvs(true);
       try {
-        // Busca conversas ignoradas
+        // Busca conversas ignoradas (normalizadas por idContato)
         const { data: ignoradas } = await sb.from('wa_conversas_ignoradas').select('jid').eq('cnpj', user.cnpj);
-        const jidsIgnorados = new Set((ignoradas || []).map(i => i.jid));
+        const chavesIgnoradas = new Set((ignoradas || []).map(i => idContato({ jid: i.jid })));
 
         const { data } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).order('ultima_msg_at', { ascending: false });
         if (data && data.length > 0) {
-          const visiveis = data.filter(c => !jidsIgnorados.has(c.jid));
+          const visiveis = data.filter(c => !chavesIgnoradas.has(idContato(c)));
           setConvs(visiveis);
           // Seleciona a 1ª conversa, preferindo uma que tenha número real (evita abrir um registro CUID)
           const primeira = visiveis.find(c => /\d{10,15}/.test((c.jid||'').split('@')[0])) || visiveis[0];
@@ -2033,8 +2059,20 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wa_mensagens', filter: `cnpj=eq.${user?.cnpj}` },
         payload => {
           const m = payload.new;
-          setMsgs(p => ({ ...p, [m.jid]: [...(p[m.jid] || []), { ...m, hora: new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) }] }));
-          setConvs(p => p.map(c => c.jid === m.jid ? { ...c, ultima_mensagem: m.conteudo, unread: m.de_mim ? c.unread : (c.unread||0)+1 } : c));
+          const novaMsg = { ...m, hora: new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) };
+          // Casa a mensagem com a conversa aberta pelo número (tolera jid CUID/@lid divergente)
+          const chaveMsg = idContato({ jid: m.jid });
+          setSelectedJid(sel => {
+            const chaveSel = idContato({ jid: sel });
+            const destino = (sel && chaveSel === chaveMsg) ? sel : m.jid;
+            setMsgs(p => {
+              const lista = p[destino] || [];
+              if (lista.some(x => x.msg_id && x.msg_id === m.msg_id)) return p; // evita duplicar
+              return { ...p, [destino]: [...lista, novaMsg] };
+            });
+            return sel;
+          });
+          setConvs(p => p.map(c => idContato(c) === chaveMsg ? { ...c, ultima_mensagem: m.conteudo, unread: m.de_mim ? c.unread : (c.unread||0)+1 } : c));
         })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wa_conversas', filter: `cnpj=eq.${user?.cnpj}` },
         payload => { setConvs(p => { if(p.find(c=>c.jid===payload.new.jid)) return p; return [payload.new, ...p]; }); })
@@ -2408,16 +2446,22 @@ function WhatsApp({ status, setStatus, user, addToast }) {
                 e.stopPropagation();
                 if(!confirm('Remover esta conversa do sistema?')) return;
                 try {
-                  const telefone = c.telefone || c.jid?.replace('@s.whatsapp.net','');
-                  // Marca como ignorada para não reaparecer na sincronização
-                  await sb.from('wa_conversas_ignoradas').upsert({ cnpj: user.cnpj, jid: c.jid }, { onConflict: 'cnpj,jid' });
-                  // Remove conversa e mensagens
-                  await sb.from('wa_mensagens').delete().eq('cnpj',user.cnpj).eq('jid',c.jid);
-                  await sb.from('wa_conversas').delete().eq('cnpj',user.cnpj).eq('jid',c.jid);
-                  // Finaliza atendimento no kanban
-                  await sb.from('atendimentos').update({status:'finalizado'}).eq('cnpj',user.cnpj).eq('telefone',telefone).neq('status','finalizado');
-                  setConvs(p=>p.filter(x=>x.jid!==c.jid));
-                  if(selectedJid===c.jid) setSelectedJid(null);
+                  const chave = idContato(c);
+                  const ehNumero = /^\d{10,15}$/.test(chave);
+                  // Marca como ignorada (chave = número ou jid) para nunca reaparecer na sincronização
+                  await sb.from('wa_conversas_ignoradas').upsert({ cnpj: user.cnpj, jid: chave }, { onConflict: 'cnpj,jid' });
+                  // Remove TODOS os registros do contato (cobre número, CUID e variações de sufixo)
+                  if (ehNumero) {
+                    await sb.from('wa_mensagens').delete().eq('cnpj',user.cnpj).ilike('jid', `%${chave}%`);
+                    await sb.from('wa_conversas').delete().eq('cnpj',user.cnpj).ilike('jid', `%${chave}%`);
+                    await sb.from('atendimentos').update({status:'finalizado'}).eq('cnpj',user.cnpj).eq('telefone',chave).neq('status','finalizado');
+                  } else {
+                    await sb.from('wa_mensagens').delete().eq('cnpj',user.cnpj).eq('jid',chave);
+                    await sb.from('wa_conversas').delete().eq('cnpj',user.cnpj).eq('jid',chave);
+                  }
+                  // Remove da tela todas as variações do mesmo contato
+                  setConvs(p=>p.filter(x=>idContato(x)!==chave));
+                  if(idContato({jid:selectedJid})===chave) setSelectedJid(null);
                   addToast('Conversa removida.');
                 } catch { addToast('Erro ao remover','error'); }
               }} title="Remover conversa"
