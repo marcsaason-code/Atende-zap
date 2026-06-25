@@ -1876,14 +1876,36 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       // Normaliza JID: converte @c.us → @s.whatsapp.net para evitar duplicatas no banco
       const normalizeJid = (jid) => jid ? jid.replace('@c.us', '@s.whatsapp.net') : jid;
 
+      // Extrai o número de telefone REAL de um chat.
+      // WhatsApp usa @lid (ID oculto) p/ alguns contatos; o número real vem em remoteJidAlt.
+      // Tenta vários campos e só aceita se for um número de telefone válido (10-15 dígitos).
+      const soNumero = (v) => (v || '').toString().split('@')[0].replace(/\D/g, '');
+      const ehTelefoneValido = (n) => /^\d{10,15}$/.test(n);
+      const extrairTelefone = (c) => {
+        const candidatos = [
+          c.remoteJidAlt,                 // número real quando o primário é @lid
+          c.senderPn,                     // phone number do remetente (algumas versões)
+          (c.remoteJid && c.remoteJid.includes('@s.whatsapp.net')) ? c.remoteJid : null,
+          (c.id && c.id.includes('@s.whatsapp.net')) ? c.id : null,
+          (c.jid && c.jid.includes('@s.whatsapp.net')) ? c.jid : null,
+        ];
+        for (const cand of candidatos) {
+          const num = soNumero(cand);
+          if (ehTelefoneValido(num)) return num;
+        }
+        return ''; // sem número real disponível (ex.: contato @lid sem alt)
+      };
+
       // 2. Insere/atualiza conversas no banco
       const conversas = chatsFiltrados.map(c => {
-        const jidNorm = normalizeJid(c.id);
+        // JID estável: prefere o número real @s.whatsapp.net; senão mantém o id original
+        const telefone = extrairTelefone(c);
+        const jidNorm = telefone ? `${telefone}@s.whatsapp.net` : normalizeJid(c.remoteJid || c.id);
         return {
           cnpj: user.cnpj,
           jid: jidNorm,
-          nome: c.name || c.pushName || c.id.split('@')[0] || '',
-          telefone: c.id.split('@')[0] || '',
+          nome: c.name || c.pushName || telefone || '',
+          telefone: telefone,
           ultima_mensagem: c.lastMessage?.message?.conversation || c.lastMessage?.message?.extendedTextMessage?.text || '',
           ultima_msg_at: c.updatedAt || new Date().toISOString(),
           unread: c.unreadCount || 0,
@@ -2133,6 +2155,36 @@ function WhatsApp({ status, setStatus, user, addToast }) {
   const getColor = (nome) => avatarColors[(nome?.charCodeAt(0)||0) % avatarColors.length];
   const initials = (nome) => nome?.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase() || '?';
 
+  // Extrai um numero de telefone valido de uma conversa, testando telefone e jid.
+  // Ignora IDs internos / @lid que nao sao numeros reais (10-15 digitos).
+  const numeroValido = (c) => {
+    const cands = [c?.telefone, c?.jid];
+    for (const cand of cands) {
+      const n = (cand || '').toString().split('@')[0].replace(/\D/g, '');
+      if (/^\d{10,15}$/.test(n)) return n;
+    }
+    return '';
+  };
+
+  // Formata numero BR: 5511999998888 -> +55 (11) 99999-8888
+  const formatTel = (num) => {
+    if (!num) return '';
+    if (num.length === 13 && num.startsWith('55')) {
+      const ddd = num.slice(2, 4), p1 = num.slice(4, 9), p2 = num.slice(9);
+      return `+55 (${ddd}) ${p1}-${p2}`;
+    }
+    if (num.length === 12 && num.startsWith('55')) {
+      const ddd = num.slice(2, 4), p1 = num.slice(4, 8), p2 = num.slice(8);
+      return `+55 (${ddd}) ${p1}-${p2}`;
+    }
+    return num;
+  };
+
+  // Telefone para exibir no subtitulo - sempre numero, nunca ID interno
+  const telDisplay = (c) => { const n = numeroValido(c); return n ? formatTel(n) : 'Numero nao disponivel'; };
+  // Nome para exibir - nome real, ou o numero formatado se nao houver nome
+  const nomeDisplay = (c) => { if (c?.nome && c.nome.trim()) return c.nome; const n = numeroValido(c); return n ? formatTel(n) : 'Contato'; };
+
   const formatDate = (iso) => {
     if (!iso) return 'Hoje';
     const d = new Date(iso); const hoje = new Date();
@@ -2330,7 +2382,7 @@ function WhatsApp({ status, setStatus, user, addToast }) {
                 {c.foto_url ? <img src={c.foto_url} alt={c.nome}/> : initials(c.nome)}
               </div>
               <div className="wa-conv-info">
-                <div className="wa-conv-name">{c.nome || c.telefone}</div>
+                <div className="wa-conv-name">{nomeDisplay(c)}</div>
                 <div className="wa-conv-preview">{c.ultima_mensagem || c.ultima || ''}</div>
               </div>
               <div className="wa-conv-meta">
@@ -2375,9 +2427,9 @@ function WhatsApp({ status, setStatus, user, addToast }) {
               {selConv.foto_url ? <img src={selConv.foto_url} alt={selConv.nome}/> : initials(selConv.nome)}
             </div>
             <div style={{flex:1}}>
-              <div className="wa-chat-header-name">{selConv.nome || selConv.telefone}</div>
+              <div className="wa-chat-header-name">{nomeDisplay(selConv)}</div>
               <div className="wa-chat-header-status">
-                {selConv.online ? '● Online' : selConv.telefone || selConv.jid?.replace('@s.whatsapp.net','')}
+                {selConv.online ? '● Online' : telDisplay(selConv)}
               </div>
             </div>
             {status === 'conectado' && (
