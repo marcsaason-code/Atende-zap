@@ -1989,6 +1989,9 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       const { data: convsAtualizadas } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).order('ultima_msg_at', { ascending: false });
       if (convsAtualizadas) setConvs(convsAtualizadas);
 
+      // Limpa o cache de mensagens para que a conversa aberta recarregue com a lógica nova
+      setMsgs({});
+
       setSyncProgress('');
       setSyncing(false);
       syncingRef.current = false;
@@ -2014,8 +2017,11 @@ function WhatsApp({ status, setStatus, user, addToast }) {
 
         const { data } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).order('ultima_msg_at', { ascending: false });
         if (data && data.length > 0) {
-          setConvs(data.filter(c => !jidsIgnorados.has(c.jid)));
-          setSelectedJid(data[0].jid);
+          const visiveis = data.filter(c => !jidsIgnorados.has(c.jid));
+          setConvs(visiveis);
+          // Seleciona a 1ª conversa, preferindo uma que tenha número real (evita abrir um registro CUID)
+          const primeira = visiveis.find(c => /\d{10,15}/.test((c.jid||'').split('@')[0])) || visiveis[0];
+          if (primeira) setSelectedJid(primeira.jid);
         }
       } catch {}
       setLoadingConvs(false);
@@ -2036,17 +2042,25 @@ function WhatsApp({ status, setStatus, user, addToast }) {
     return () => sb.removeChannel(channel);
   }, [user?.cnpj]);
 
-  /* Carrega mensagens da conversa selecionada */
+  /* Carrega mensagens da conversa selecionada.
+     Vincula por NÚMERO de telefone (não jid exato) para tolerar registros
+     antigos com CUID vs número, e diferenças de sufixo (@lid, @c.us). */
   useEffect(() => {
-    if (!selectedJid || !user?.cnpj || msgs[selectedJid]) return;
+    if (!selectedJid || !user?.cnpj) return;
+    const convSel = convs.find(c => c.jid === selectedJid);
+    const numero = numeroValido(convSel || { jid: selectedJid });
     const load = async () => {
       try {
-        const { data } = await sb.from('wa_mensagens').select('*').eq('cnpj', user.cnpj).eq('jid', selectedJid).order('created_at', { ascending: true }).limit(100);
+        let query = sb.from('wa_mensagens').select('*').eq('cnpj', user.cnpj).order('created_at', { ascending: true }).limit(200);
+        // Se a conversa tem número válido, casa por número (pega todas as variações de jid).
+        // Senão, casa pelo jid exato (contatos @lid/CUID sem número).
+        query = numero ? query.ilike('jid', `%${numero}%`) : query.eq('jid', selectedJid);
+        const { data } = await query;
         if (data) setMsgs(p => ({ ...p, [selectedJid]: data.map(m => ({ ...m, hora: new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) })) }));
       } catch {}
     };
     load();
-  }, [selectedJid, user?.cnpj]);
+  }, [selectedJid, user?.cnpj, convs]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selectedJid, msgs]);
   useEffect(() => () => clearInterval(pollRef.current), []);
