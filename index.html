@@ -1842,19 +1842,22 @@ function WhatsApp({ status, setStatus, user, addToast }) {
      enquanto o @lid permanece o mesmo para o contato. */
   const idContato = (obj) => {
     if (!obj) return '';
-    // 1) Número real de telefone
     const campos = [obj.telefone, obj.remoteJidAlt, obj.senderPn, obj.remoteJid, obj.jid, obj.id];
-    for (const f of campos) {
-      const n = (f || '').toString().split('@')[0].replace(/\D/g, '');
-      if (/^\d{10,15}$/.test(n)) return n;
-    }
-    // 2) ID do @lid (chave estável para contatos de número oculto)
+    // 1) @lid PRIMEIRO: o ID do @lid é numérico e passaria no teste de telefone abaixo,
+    //    então precisa ser identificado antes (é número oculto, não telefone real).
     for (const f of campos) {
       const s = (f || '').toString();
       if (s.includes('@lid')) {
         const id = s.split('@')[0].replace(/\D/g, '');
         if (id) return `lid:${id}`;
       }
+    }
+    // 2) Número real de telefone (remoteJidAlt traz o número quando o primário é @lid)
+    for (const f of campos) {
+      const s = (f || '').toString();
+      if (s.includes('@lid')) continue; // nunca tratar o id de um @lid como telefone
+      const n = s.split('@')[0].replace(/\D/g, '');
+      if (/^\d{10,15}$/.test(n)) return n;
     }
     // 3) Fallback bruto
     const raw = (obj.remoteJid || obj.jid || obj.id || '').toString();
