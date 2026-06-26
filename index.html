@@ -1417,7 +1417,7 @@ function Agenda({ data, setData, addToast, user, funcionarios, categorias, servi
   const exportarPDF = () => {
     const func = funcionarios.find(f=>f.id===Number(filtroFunc));
     const ags = filtroFunc==='todos' ? data : data.filter(a=>a.funcionario_nome===func?.nome);
-    const sorted = [...ags].sort((a,b)=>a.data.localeCompare(b.data)||a.hora.localeCompare(b.hora));
+    const sorted = [...ags].sort((a,b)=>(a.data||'').localeCompare(b.data||'')||(a.hora||'').localeCompare(b.hora||''));
 
     const linhas = sorted.map(a=>`
       <tr>
@@ -2115,20 +2115,21 @@ function WhatsApp({ status, setStatus, user, addToast }) {
      antigos com CUID vs número, e diferenças de sufixo (@lid, @c.us). */
   useEffect(() => {
     if (!selectedJid || !user?.cnpj) return;
-    const convSel = convs.find(c => c.jid === selectedJid);
-    const numero = numeroValido(convSel || { jid: selectedJid });
+    // Deriva o numero direto do selectedJid (ja padronizado como numero@s.whatsapp.net).
+    // Nao depende de `convs` para evitar re-buscar mensagens a cada mudanca de estado.
+    const numero = numeroValido({ jid: selectedJid });
     const load = async () => {
       try {
         let query = sb.from('wa_mensagens').select('*').eq('cnpj', user.cnpj).order('created_at', { ascending: true }).limit(200);
-        // Se a conversa tem número válido, casa por número (pega todas as variações de jid).
-        // Senão, casa pelo jid exato (contatos @lid/CUID sem número).
-        query = numero ? query.ilike('jid', `%${numero}%`) : query.eq('jid', selectedJid);
+        // Com numero: ancora no inicio (numero@...) p/ nao casar numeros que contem este como substring.
+        // Sem numero (contatos @lid/CUID): casa pelo jid exato.
+        query = numero ? query.ilike('jid', `${numero}@%`) : query.eq('jid', selectedJid);
         const { data } = await query;
         if (data) setMsgs(p => ({ ...p, [selectedJid]: data.map(m => ({ ...m, hora: new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) })) }));
       } catch {}
     };
     load();
-  }, [selectedJid, user?.cnpj, convs]);
+  }, [selectedJid, user?.cnpj]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selectedJid, msgs]);
   useEffect(() => () => clearInterval(pollRef.current), []);
@@ -2189,44 +2190,23 @@ function WhatsApp({ status, setStatus, user, addToast }) {
     setReconectando(false); setQrStep('idle'); setQrCode('');
   };
 
-  // Deduplica conversas que representam o mesmo contato.
-  // O WhatsApp pode expor o mesmo contato com dois identificadores:
-  // o número real (@s.whatsapp.net) e um ID oculto (@lid), além de @c.us.
-  // 1ª chave: telefone. 2ª chave (fallback): nome real idêntico (não numérico).
+  // Deduplica conversas pelo MESMO identificador estável usado em todo o sistema (idContato).
+  // Número de telefone, "lid:..." ou jid — cada contato aparece uma única vez.
+  // Não agrupa por nome (evita esconder dois clientes diferentes com o mesmo nome).
   const convsDedup = (() => {
     const isMelhor = (a, b) => {
-      // 'a' deve substituir 'b'?
       const aReal = a.jid?.includes('@s.whatsapp.net');
       const bReal = b.jid?.includes('@s.whatsapp.net');
       if (aReal !== bReal) return aReal;                 // prefere número real
       return new Date(a.ultima_msg_at || 0) > new Date(b.ultima_msg_at || 0); // depois, o mais recente
     };
-
-    const porTelefone = new Map();
+    const porChave = new Map();
     for (const c of convs) {
-      const tel = (c.telefone || c.jid?.split('@')[0] || '').replace(/\D/g, '');
-      const chave = tel || c.jid;
-      const existing = porTelefone.get(chave);
-      if (!existing || isMelhor(c, existing)) porTelefone.set(chave, c);
+      const chave = idContato(c);
+      const existing = porChave.get(chave);
+      if (!existing || isMelhor(c, existing)) porChave.set(chave, c);
     }
-
-    // Fallback: agrupa por nome real idêntico (ignora nomes que são só números)
-    const porNome = new Map();
-    const resultado = [];
-    for (const c of porTelefone.values()) {
-      const nome = (c.nome || '').trim().toLowerCase();
-      const nomeEhNumero = !nome || /^[\d\s+()-]+$/.test(nome);
-      if (nomeEhNumero) { resultado.push(c); continue; }
-      const existing = porNome.get(nome);
-      if (!existing) { porNome.set(nome, c); resultado.push(c); }
-      else if (isMelhor(c, existing)) {
-        // substitui o anterior no resultado
-        const idx = resultado.indexOf(existing);
-        if (idx !== -1) resultado[idx] = c;
-        porNome.set(nome, c);
-      }
-    }
-    return resultado;
+    return Array.from(porChave.values());
   })();
 
   const filtered = convsDedup.filter(c => c.nome?.toLowerCase().includes(search.toLowerCase()) || c.telefone?.includes(search));
