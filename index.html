@@ -2465,7 +2465,8 @@ function WhatsApp({ status, setStatus, user, addToast }) {
                   if (ehNumero) {
                     await sb.from('wa_mensagens').delete().eq('cnpj',user.cnpj).ilike('jid', `%${chave}%`);
                     await sb.from('wa_conversas').delete().eq('cnpj',user.cnpj).ilike('jid', `%${chave}%`);
-                    await sb.from('atendimentos').update({status:'finalizado'}).eq('cnpj',user.cnpj).eq('telefone',chave).neq('status','finalizado');
+                    // Remove o atendimento do kanban (em vez de mandá-lo para "Finalizado")
+                    await sb.from('atendimentos').delete().eq('cnpj',user.cnpj).eq('telefone',chave);
                   } else {
                     // Coleta os jids reais de todos os registros que compartilham a mesma chave estável
                     const { data: doContato } = await sb.from('wa_conversas').select('jid').eq('cnpj',user.cnpj);
