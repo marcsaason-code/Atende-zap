@@ -2033,9 +2033,10 @@ function WhatsApp({ status, setStatus, user, addToast }) {
         console.error('Erro ao buscar mensagens:', e);
       }
 
-      // 4. Recarrega conversas do banco
+      // 4. Recarrega conversas do banco, aplicando o MESMO filtro de ignoradas
+      // (senão um registro excluído que sobrou no banco reaparece na tela)
       const { data: convsAtualizadas } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).order('ultima_msg_at', { ascending: false });
-      if (convsAtualizadas) setConvs(convsAtualizadas);
+      if (convsAtualizadas) setConvs(convsAtualizadas.filter(c => !chavesIgnoradas.has(idContato(c))));
 
       // Limpa o cache de mensagens para que a conversa aberta recarregue com a lógica nova
       setMsgs({});
