@@ -1972,12 +1972,38 @@ function WhatsApp({ status, setStatus, user, addToast }) {
           ultima_mensagem: c.lastMessage?.message?.conversation || c.lastMessage?.message?.extendedTextMessage?.text || '',
           ultima_msg_at: c.updatedAt || new Date().toISOString(),
           unread: c.unreadCount || 0,
+          arquivada: false, // veio da Evolution = ativa (desarquiva se estava arquivada)
         };
       });
 
       if (conversas.length > 0) {
         const { error: upErr } = await sb.from('wa_conversas').upsert(conversas, { onConflict: 'cnpj,jid', ignoreDuplicates: false });
         if (upErr) throw new Error('Erro ao salvar conversas no banco: ' + upErr.message);
+      }
+
+      // ── Reconciliação: arquiva conversas que sumiram do WhatsApp ──
+      // Proteção contra sincronização incompleta: só reconcilia se a Evolution
+      // retornou uma lista consistente (várias conversas). Se veio vazia/mínima,
+      // é sinal de sync falha — NÃO arquiva nada (evita esconder conversas legítimas).
+      const SYNC_MINIMO = 3;
+      if (conversas.length >= SYNC_MINIMO) {
+        // Chaves (jid) que a Evolution retornou nesta sincronização
+        const jidsVindos = new Set(conversas.map(c => c.jid));
+        // Todas as conversas ativas (não arquivadas) do banco
+        const { data: noBanco } = await sb.from('wa_conversas')
+          .select('jid').eq('cnpj', user.cnpj).eq('arquivada', false);
+        // As que estão no banco mas NÃO vieram da Evolution → sumiram do WhatsApp → arquivar
+        const paraArquivar = (noBanco || [])
+          .map(c => c.jid)
+          .filter(jid => !jidsVindos.has(jid));
+        if (paraArquivar.length > 0) {
+          await sb.from('wa_conversas')
+            .update({ arquivada: true })
+            .eq('cnpj', user.cnpj)
+            .in('jid', paraArquivar);
+        }
+        // As que voltaram (vieram da Evolution) → garante que estão desarquivadas
+        // (o upsert acima já as recriou com arquivada=false por padrão, mas reforçamos)
       }
 
       // 3. Busca todas as mensagens sem filtro por conversa (paginado)
@@ -2050,7 +2076,7 @@ function WhatsApp({ status, setStatus, user, addToast }) {
 
       // 4. Recarrega conversas do banco, aplicando o MESMO filtro de ignoradas
       // (senão um registro excluído que sobrou no banco reaparece na tela)
-      const { data: convsAtualizadas } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).order('ultima_msg_at', { ascending: false });
+      const { data: convsAtualizadas } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).eq('arquivada', false).order('ultima_msg_at', { ascending: false });
       if (convsAtualizadas) setConvs(convsAtualizadas.filter(c => !chavesIgnoradas.has(idContato(c))));
 
       // Limpa o cache de mensagens para que a conversa aberta recarregue com a lógica nova
@@ -2086,7 +2112,7 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       };
       const chavesIgnoradas = new Set((ignoradas || []).map(i => chaveIgnorada(i.jid)));
 
-        const { data } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).order('ultima_msg_at', { ascending: false });
+        const { data } = await sb.from('wa_conversas').select('*').eq('cnpj', user.cnpj).eq('arquivada', false).order('ultima_msg_at', { ascending: false });
         if (data && data.length > 0) {
           const visiveis = data.filter(c => !chavesIgnoradas.has(idContato(c)));
           setConvs(visiveis);
