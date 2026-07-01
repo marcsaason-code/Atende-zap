@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="apple-mobile-web-app-title" content="Atende+Zap"/>
@@ -42,6 +42,8 @@
     --header-h: 64px;
   }
   html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+  /* dvh = altura real da viewport no mobile (desconta barras do navegador) */
+  @supports (height: 100dvh) { html, body, #root { height: 100dvh; } }
   body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
   /* ── Login ── */
@@ -64,18 +66,19 @@
   .login-hint { font-size: 11px; color: var(--text3); text-align: center; margin-top: 16px; }
 
   /* ── App Shell ── */
-  .app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
   .header { height: var(--header-h); background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
   .header-left { display: flex; align-items: center; gap: 10px; }
   .header-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--green-dark); flex-shrink: 0; }
   .header-name { font-size: 14px; font-weight: 600; color: var(--text); }
   .header-role { font-size: 11px; color: var(--text3); }
   .header-logo { height: 42px; object-fit: contain; }
-  .page-area { flex: 1; overflow-y: auto; padding-bottom: calc(var(--nav-h) + 16px); }
+  .page-area { flex: 1; overflow-y: auto; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px); }
   .page { padding: 20px 16px; }
 
   /* ── Bottom Nav ── */
-  .bottom-nav { height: var(--nav-h); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding: 0 8px; flex-shrink: 0; position: sticky; bottom: 0; z-index: 10; padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-nav { height: calc(var(--nav-h) + env(safe-area-inset-bottom)); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-around; padding: 0 8px; padding-bottom: env(safe-area-inset-bottom); position: fixed; left: 0; right: 0; bottom: 0; z-index: 100; }
+  .bottom-nav > * { height: var(--nav-h); }
   .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px; border: none; background: none; cursor: pointer; border-radius: 12px; transition: background .15s; min-width: 60px; }
   .nav-btn.active { background: var(--green-light); }
   .nav-btn svg { transition: stroke .15s; }
