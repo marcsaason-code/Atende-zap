@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="apple-mobile-web-app-title" content="Atende+Zap"/>
 <meta name="theme-color" content="#22c55e"/>
-<title>Atende+Zap | Staff</title>
+<title>Atende+Zap | Especialista</title>
 <link rel="icon" type="image/x-icon" href="./assets/favicon.ico"/>
 <link rel="apple-touch-icon" href="./assets/logo.png"/>
 <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
@@ -258,7 +258,7 @@ function App() {
           <div className="header-avatar">{func.nome?.slice(0,2).toUpperCase()}</div>
           <div>
             <div className="header-name">{func.nome?.split(' ')[0]}</div>
-            <div className="header-role">{func.especialidade || 'Funcionário'}</div>
+            <div className="header-role">{func.especialidade || 'Especialista'}</div>
           </div>
         </div>
         <img src="/assets/logo.png" alt="Atende+Zap" className="header-logo" style={{height:42}}/>
@@ -322,7 +322,7 @@ function LoginPage({ onLogin }) {
       <div className="login-card fade-in">
         <div className="login-logo">
           <img src="/assets/logo.png" alt="Atende+Zap"/>
-          <span className="login-badge">Área do Funcionário</span>
+          <span className="login-badge">Área do Especialista</span>
         </div>
         <p className="login-sub">Acesse sua agenda de atendimentos</p>
         <form onSubmit={handle}>
@@ -694,7 +694,7 @@ function PerfilPage({ func, onLogout, agendamentos }) {
         </div>
         <div style={{textAlign:'center'}}>
           <div style={{fontFamily:'Plus Jakarta Sans',fontSize:18,fontWeight:600}}>{func.nome}</div>
-          <div style={{fontSize:13,color:'var(--text3)',marginTop:3}}>{func.especialidade || 'Funcionário'}</div>
+          <div style={{fontSize:13,color:'var(--text3)',marginTop:3}}>{func.especialidade || 'Especialista'}</div>
           {func.crm && <div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>CRM: {func.crm}</div>}
         </div>
       </div>

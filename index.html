@@ -470,6 +470,9 @@
   @media(max-width:768px){ .wa-mirror { grid-template-columns: 1fr; } }
   /* ── Configurações ── */
   .config-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 1100px) { .config-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 720px)  { .config-grid { grid-template-columns: 1fr; } }
   .config-tab { padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--text2); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; margin-bottom: -1px; }
   .config-tab:hover { color: var(--text); }
   .config-tab.active { color: var(--green-dark); border-bottom-color: var(--green); font-weight: 600; }
@@ -1023,7 +1026,7 @@ function Dashboard({ atendimentos, agendamentos, setPage, funcionarios }) {
           );
         })()}
 
-        {/* Gráfico de pizza (donut): atendimentos por responsável */}
+        {/* Gráfico de pizza (donut): atendimentos por especialista */}
         {(() => {
           const agora = new Date();
           const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
@@ -1032,7 +1035,7 @@ function Dashboard({ atendimentos, agendamentos, setPage, funcionarios }) {
 
           const contagem = {};
           doMes.forEach(a => {
-            const nome = a.responsavel || a.funcionario_nome || 'Sem responsável';
+            const nome = a.responsavel || a.funcionario_nome || 'Sem especialista';
             contagem[nome] = (contagem[nome]||0)+1;
           });
           if (funcionarios.length > 0) funcionarios.filter(f=>f.ativo).forEach(f => { if(!contagem[f.nome]) contagem[f.nome]=0; });
@@ -1058,11 +1061,11 @@ function Dashboard({ atendimentos, agendamentos, setPage, funcionarios }) {
           return (
             <div className="dash-card" style={{margin:0}}>
               <div className="dash-card-header">
-                <span className="dash-card-title">Por responsável</span>
+                <span className="dash-card-title">Por especialista</span>
                 <span style={{fontSize:11,color:'var(--text3)',fontWeight:500}}>{total} total</span>
               </div>
               {total === 0 ? (
-                <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'40px 16px'}}>Nenhum atendimento com responsável</div>
+                <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'40px 16px'}}>Nenhum atendimento com especialista</div>
               ) : (
                 <div style={{padding:'12px 16px',display:'flex',gap:16,alignItems:'center'}}>
                   <svg width="130" height="130" viewBox="0 0 130 130" style={{flexShrink:0}}>
@@ -1364,9 +1367,9 @@ function AgendarModal({ atendimento, onClose, onSave, funcionarios=[], categoria
         </div>
         {funcionarios.length > 0 && (
           <div className="form-field">
-            <label>Responsável</label>
+            <label>Especialista</label>
             <select value={form.funcionario_id} onChange={e=>handleFuncionario(e.target.value)}>
-              <option value="">Selecione um responsável</option>
+              <option value="">Selecione um especialista</option>
               {funcionarios.filter(f=>f.ativo).map(f=><option key={f.id} value={f.id}>{f.nome}{f.especialidade?` — ${f.especialidade}`:''}</option>)}
             </select>
           </div>
@@ -1443,9 +1446,9 @@ function Agenda({ data, setData, addToast, user, funcionarios, categorias, servi
       .footer{margin-top:20px;font-size:11px;color:#999;text-align:right}
     </style></head><body>
     <h1>Relatório de Agendamentos</h1>
-    <p>${func?`Responsável: ${func.nome}`:'Todos os responsáveis'} &nbsp;|&nbsp; Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</p>
+    <p>${func?`Especialista: ${func.nome}`:'Todos os especialistas'} &nbsp;|&nbsp; Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</p>
     <table>
-      <thead><tr><th>Data</th><th>Hora</th><th>Cliente</th><th>Telefone</th><th>Responsável</th><th>Serviço</th><th>Status</th></tr></thead>
+      <thead><tr><th>Data</th><th>Hora</th><th>Cliente</th><th>Telefone</th><th>Especialista</th><th>Serviço</th><th>Status</th></tr></thead>
       <tbody>${linhas}</tbody>
     </table>
     <div class="footer">Total: ${sorted.length} agendamento(s)</div>
@@ -1530,7 +1533,7 @@ function Agenda({ data, setData, addToast, user, funcionarios, categorias, servi
           {funcionarios.length > 0 && (
             <select value={filtroFunc} onChange={e=>setFiltroFunc(e.target.value)}
               style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'6px 12px',fontSize:13,color:'var(--text)',outline:'none',cursor:'pointer'}}>
-              <option value="todos">Todos os responsáveis</option>
+              <option value="todos">Todos os especialistas</option>
               {funcionarios.filter(f=>f.ativo).map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
             </select>
           )}
@@ -1632,6 +1635,7 @@ function Agenda({ data, setData, addToast, user, funcionarios, categorias, servi
             </div>
             <div className="detail-row"><span className="detail-label">Data</span><span className="detail-val">{new Date(detailItem.data+'T00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}</span></div>
             <div className="detail-row"><span className="detail-label">🕐 Hora</span><span className="detail-val">{detailItem.hora}</span></div>
+            <div className="detail-row"><span className="detail-label">👤 Especialista</span><span className="detail-val">{detailItem.funcionario_nome || detailItem.responsavel || 'Sem especialista'}</span></div>
             <div className="detail-row"><span className="detail-label">Telefone</span><span className="detail-val" style={{color:'var(--green)'}}>{detailItem.telefone}</span></div>
             {detailItem.obs && <div className="detail-row"><span className="detail-label">📝 Obs.</span><span className="detail-val">{detailItem.obs}</span></div>}
             <div className="modal-actions" style={{marginTop:20}}>
@@ -1715,12 +1719,12 @@ function AgendaModal({ item, defaultDate, onClose, onSave, funcionarios=[], cate
           <div className="form-field"><label>Hora</label><input type="time" value={form.hora} onChange={e=>up('hora',e.target.value)} /></div>
         </div>
 
-        {/* Funcionário */}
+        {/* Especialista */}
         {funcionarios.length > 0 && (
           <div className="form-field">
-            <label>Responsável</label>
+            <label>Especialista</label>
             <select value={form.funcionario_id} onChange={e=>handleFuncionario(e.target.value)}>
-              <option value="">Selecione um responsável</option>
+              <option value="">Selecione um especialista</option>
               {funcionarios.filter(f=>f.ativo).map(f=><option key={f.id} value={f.id}>{f.nome}{f.especialidade?` — ${f.especialidade}`:''}</option>)}
             </select>
           </div>
@@ -2914,15 +2918,19 @@ function Suporte({ user, addToast }) {
 
 /* ═══ CONFIGURAÇÕES ═══ */
 function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCategorias, servicos, setServicos, addToast }) {
-  const [tab, setTab] = useState('funcionarios');
+  const [modalTipo, setModalTipo] = useState(null); // 'funcionarios' | 'categorias' | 'servicos'
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const cnpj = user?.cnpj || '';
 
-  /* ── CRUD genérico ── */
+  const abrirModal = (tipo, item = null) => { setModalTipo(tipo); setEditItem(item); setShowModal(true); };
+  const fecharModal = () => { setShowModal(false); setEditItem(null); setModalTipo(null); };
+
+  /* ── CRUD genérico (recebe o tipo explicitamente) ── */
   const salvar = async (form) => {
+    const tipo = modalTipo;
     try {
-      if (tab === 'funcionarios') {
+      if (tipo === 'funcionarios') {
         if (editItem) {
           const { data, error } = await sb.from('funcionarios').update(form).eq('id', editItem.id).select().single();
           if (error) throw error;
@@ -2932,8 +2940,8 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
           if (error) throw error;
           setFuncionarios(p => [...p, data]);
         }
-        addToast(editItem ? 'Funcionário atualizado!' : 'Funcionário cadastrado!');
-      } else if (tab === 'categorias') {
+        addToast(editItem ? 'Especialista atualizado!' : 'Especialista cadastrado!');
+      } else if (tipo === 'categorias') {
         if (editItem) {
           const { data, error } = await sb.from('categorias').update(form).eq('id', editItem.id).select().single();
           if (error) throw error;
@@ -2957,16 +2965,16 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
         addToast(editItem ? 'Serviço atualizado!' : 'Serviço criado!');
       }
     } catch (e) { addToast(e.message || 'Erro ao salvar', 'error'); }
-    setShowModal(false); setEditItem(null);
+    fecharModal();
   };
 
-  const remover = async (id) => {
+  const remover = async (tipo, id) => {
     if (!confirm('Remover este item?')) return;
-    const tabela = tab === 'funcionarios' ? 'funcionarios' : tab === 'categorias' ? 'categorias' : 'servicos';
+    const tabela = tipo;
     try {
       // Funcionário pode ter agendamentos vinculados (foreign key).
       // Desvincula antes de excluir: os agendamentos continuam existindo, só ficam sem especialista.
-      if (tab === 'funcionarios') {
+      if (tipo === 'funcionarios') {
         const { error: unlinkErr } = await sb.from('agendamentos')
           .update({ funcionario_id: null, funcionario_nome: null })
           .eq('cnpj', cnpj).eq('funcionario_id', id);
@@ -2988,8 +2996,8 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
         return;
       }
       // Só atualiza a tela depois de confirmar que apagou no banco
-      if (tab === 'funcionarios') setFuncionarios(p => p.filter(f => f.id !== id));
-      else if (tab === 'categorias') setCategorias(p => p.filter(c => c.id !== id));
+      if (tipo === 'funcionarios') setFuncionarios(p => p.filter(f => f.id !== id));
+      else if (tipo === 'categorias') setCategorias(p => p.filter(c => c.id !== id));
       else setServicos(p => p.filter(s => s.id !== id));
       addToast('Removido com sucesso.', 'info');
     } catch (e) {
@@ -3002,93 +3010,89 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
     try {
       const { data } = await sb.from('funcionarios').update({ ativo: !func.ativo }).eq('id', func.id).select().single();
       setFuncionarios(p => p.map(f => f.id === func.id ? data : f));
-      addToast(data.ativo ? 'Funcionário ativado!' : 'Funcionário desativado.', 'info');
+      addToast(data.ativo ? 'Especialista ativado!' : 'Especialista desativado.', 'info');
     } catch { addToast('Erro', 'error'); }
   };
 
-  const tabs = [
-    { id: 'funcionarios', label: 'Funcionários' },
-    { id: 'categorias', label: 'Categorias' },
-    { id: 'servicos', label: 'Serviços' },
-  ];
-
-  const lista = tab === 'funcionarios' ? funcionarios : tab === 'categorias' ? categorias : servicos;
   const catNome = (id) => categorias.find(c => c.id === id)?.nome || '—';
   const cores = ['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#0891b2','#ec4899','#14b8a6'];
 
-  return (
-    <div style={{maxWidth:700}}>
-      <div className="config-tabs">
-        {tabs.map(t => (
-          <button key={t.id} className={`config-tab ${tab===t.id?'active':''}`} onClick={()=>{setTab(t.id);setShowModal(false);setEditItem(null);}}>
-            {t.label}
-          </button>
-        ))}
+  // Renderiza uma seção (card com título) para um dos tipos
+  const Secao = ({ tipo, titulo, lista, contador, textoNovo, vazio }) => (
+    <div className="config-card">
+      <div className="config-card-header">
+        <div style={{display:'flex',flexDirection:'column',gap:2}}>
+          <span style={{fontSize:15,fontWeight:700,color:'var(--text)'}}>{titulo}</span>
+          <span style={{fontSize:12,color:'var(--text3)'}}>{contador}</span>
+        </div>
+        <button className="btn-add" style={{fontSize:13,padding:'7px 14px'}} onClick={()=>abrirModal(tipo)}>
+          <IconPlus /> {textoNovo}
+        </button>
       </div>
 
-      <div className="config-card">
-        <div className="config-card-header">
-          <span style={{fontSize:14,fontWeight:600,color:'var(--text)'}}>
-            {tab==='funcionarios'?`${funcionarios.length} funcionário(s)`:tab==='categorias'?`${categorias.length} categoria(s)`:`${servicos.length} serviço(s)`}
-          </span>
-          <button className="btn-add" style={{fontSize:13,padding:'7px 14px'}} onClick={()=>{setEditItem(null);setShowModal(true);}}>
-            <IconPlus /> {tab==='funcionarios'?'Novo funcionário':tab==='categorias'?'Nova categoria':'Novo serviço'}
-          </button>
-        </div>
-
-        {lista.length === 0 ? (
-          <div style={{padding:'32px',textAlign:'center',color:'var(--text3)',fontSize:13}}>
-            {tab==='funcionarios'?'Nenhum funcionário cadastrado':tab==='categorias'?'Nenhuma categoria criada':'Nenhum serviço cadastrado'}
-          </div>
-        ) : (
-          lista.map((item, i) => (
-            <div key={item.id} className="config-item">
-              <div className="config-item-info">
-                <div className="config-avatar" style={{background: tab==='categorias'?(item.cor||cores[i%cores.length])+'18':'var(--bg3)', color: tab==='categorias'?(item.cor||cores[i%cores.length]):'var(--text2)', border:'1px solid var(--border)'}}>
-                  {tab==='funcionarios' ? item.nome.slice(0,2).toUpperCase() : tab==='categorias' ? (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                  ) : (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-                  )}
-                </div>
-                <div>
-                  <div className="config-name" style={{fontWeight:500}}>{item.nome}</div>
-                  <div className="config-sub">
-                    {tab==='funcionarios' && (item.especialidade || 'Sem especialidade')}
-                    {tab==='categorias' && <span style={{background:(item.cor||cores[i%cores.length])+'22',color:item.cor||cores[i%cores.length],padding:'1px 8px',borderRadius:99,fontSize:11,fontWeight:600}}>{item.cor||cores[i%cores.length]}</span>}
-                    {tab==='servicos' && `${item.duracao_min||30} min · Categoria: ${catNome(item.categoria_id)}`}
-                  </div>
-                </div>
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                {tab==='funcionarios' && (
-                  <button className="action-btn" style={{fontSize:11,padding:'4px 10px',background:item.ativo?'var(--green-light)':'var(--bg3)',color:item.ativo?'var(--green-dark)':'var(--text2)',borderColor:item.ativo?'var(--green-mid)':undefined}}
-                    onClick={()=>toggleAtivo(item)}>
-                    {item.ativo?'✓ Ativo':'Inativo'}
-                  </button>
+      {lista.length === 0 ? (
+        <div style={{padding:'28px',textAlign:'center',color:'var(--text3)',fontSize:13}}>{vazio}</div>
+      ) : (
+        lista.map((item, i) => (
+          <div key={item.id} className="config-item">
+            <div className="config-item-info">
+              <div className="config-avatar" style={{background: tipo==='categorias'?(item.cor||cores[i%cores.length])+'18':'var(--bg3)', color: tipo==='categorias'?(item.cor||cores[i%cores.length]):'var(--text2)', border:'1px solid var(--border)'}}>
+                {tipo==='funcionarios' ? (item.nome||'?').slice(0,2).toUpperCase() : tipo==='categorias' ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
                 )}
-                <button className="action-btn" onClick={()=>{setEditItem(item);setShowModal(true);}}>Editar</button>
-                <button className="action-btn danger" onClick={()=>remover(item.id)}><IconTrash /></button>
+              </div>
+              <div>
+                <div className="config-name" style={{fontWeight:500}}>{item.nome}</div>
+                <div className="config-sub">
+                  {tipo==='funcionarios' && (item.especialidade || 'Sem especialidade')}
+                  {tipo==='categorias' && <span style={{background:(item.cor||cores[i%cores.length])+'22',color:item.cor||cores[i%cores.length],padding:'1px 8px',borderRadius:99,fontSize:11,fontWeight:600}}>{item.cor||cores[i%cores.length]}</span>}
+                  {tipo==='servicos' && `${item.duracao_min||30} min · Categoria: ${catNome(item.categoria_id)}`}
+                </div>
               </div>
             </div>
-          ))
-        )}
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              {tipo==='funcionarios' && (
+                <button className="action-btn" style={{fontSize:11,padding:'4px 10px',background:item.ativo?'var(--green-light)':'var(--bg3)',color:item.ativo?'var(--green-dark)':'var(--text2)',borderColor:item.ativo?'var(--green-mid)':undefined}}
+                  onClick={()=>toggleAtivo(item)}>
+                  {item.ativo?'✓ Ativo':'Inativo'}
+                </button>
+              )}
+              <button className="action-btn" onClick={()=>abrirModal(tipo, item)}>Editar</button>
+              <button className="action-btn danger" onClick={()=>remover(tipo, item.id)}><IconTrash /></button>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="config-grid">
+        <Secao tipo="funcionarios" titulo="Especialistas" lista={funcionarios}
+          contador={`${funcionarios.length} especialista(s)`} textoNovo="Novo especialista" vazio="Nenhum especialista cadastrado" />
+        <Secao tipo="categorias" titulo="Categorias" lista={categorias}
+          contador={`${categorias.length} categoria(s)`} textoNovo="Nova categoria" vazio="Nenhuma categoria criada" />
+        <Secao tipo="servicos" titulo="Serviços" lista={servicos}
+          contador={`${servicos.length} serviço(s)`} textoNovo="Novo serviço" vazio="Nenhum serviço cadastrado" />
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={()=>{setShowModal(false);setEditItem(null);}}>
+        <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal" style={{width:420}} onClick={e=>e.stopPropagation()}>
-            <h3>{editItem?'Editar':'Novo'} {tab==='funcionarios'?'funcionário':tab==='categorias'?'categoria':'serviço'}</h3>
+            <h3>{editItem?'Editar':'Novo'} {modalTipo==='funcionarios'?'especialista':modalTipo==='categorias'?'categoria':'serviço'}</h3>
 
-            {tab==='funcionarios' && (
-              <ConfigFormFuncionario item={editItem} onSave={salvar} onClose={()=>{setShowModal(false);setEditItem(null);}}/>
+            {modalTipo==='funcionarios' && (
+              <ConfigFormFuncionario item={editItem} onSave={salvar} onClose={fecharModal}/>
             )}
-            {tab==='categorias' && (
-              <ConfigFormCategoria item={editItem} onSave={salvar} onClose={()=>{setShowModal(false);setEditItem(null);}} cores={cores}/>
+            {modalTipo==='categorias' && (
+              <ConfigFormCategoria item={editItem} onSave={salvar} onClose={fecharModal} cores={cores}/>
             )}
-            {tab==='servicos' && (
-              <ConfigFormServico item={editItem} onSave={salvar} onClose={()=>{setShowModal(false);setEditItem(null);}} categorias={categorias}/>
+            {modalTipo==='servicos' && (
+              <ConfigFormServico item={editItem} onSave={salvar} onClose={fecharModal} categorias={categorias}/>
             )}
           </div>
         </div>
@@ -3143,7 +3147,7 @@ function ConfigFormFuncionario({ item, onSave, onClose }) {
 
       <div className="form-field" style={{display:'flex',alignItems:'center',gap:10}}>
         <input type="checkbox" id="ativo" checked={form.ativo} onChange={e=>up('ativo',e.target.checked)} style={{width:16,height:16}}/>
-        <label htmlFor="ativo" style={{fontSize:14,color:'var(--text)',cursor:'pointer',textTransform:'none',letterSpacing:0}}>Funcionário ativo</label>
+        <label htmlFor="ativo" style={{fontSize:14,color:'var(--text)',cursor:'pointer',textTransform:'none',letterSpacing:0}}>Especialista ativo</label>
       </div>
       <div className="modal-actions">
         <button className="btn-cancel" onClick={onClose}>Cancelar</button>
