@@ -2964,6 +2964,18 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
     if (!confirm('Remover este item?')) return;
     const tabela = tab === 'funcionarios' ? 'funcionarios' : tab === 'categorias' ? 'categorias' : 'servicos';
     try {
+      // Funcionário pode ter agendamentos vinculados (foreign key).
+      // Desvincula antes de excluir: os agendamentos continuam existindo, só ficam sem especialista.
+      if (tab === 'funcionarios') {
+        const { error: unlinkErr } = await sb.from('agendamentos')
+          .update({ funcionario_id: null, funcionario_nome: null })
+          .eq('cnpj', cnpj).eq('funcionario_id', id);
+        if (unlinkErr) {
+          console.error('Erro ao desvincular agendamentos:', unlinkErr);
+          addToast('Não foi possível desvincular os agendamentos: ' + (unlinkErr.message || ''), 'error');
+          return;
+        }
+      }
       // Confirma que o banco realmente apagou (delete não lança erro sozinho — retorna em `error`)
       const { error, count } = await sb.from(tabela).delete({ count: 'exact' }).eq('id', id);
       if (error) {
