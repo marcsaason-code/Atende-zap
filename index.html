@@ -1959,8 +1959,11 @@ function WhatsApp({ status, setStatus, user, addToast }) {
         // JID estável: prefere o número real @s.whatsapp.net; senão mantém o id original
         const telefone = extrairTelefone(c);
         const jidNorm = telefone ? `${telefone}@s.whatsapp.net` : normalizeJid(c.remoteJid || c.id);
-        // Nome: pushName do chat, ou da última mensagem, ou o número
-        const nomeContato = c.name || c.pushName || c.lastMessage?.pushName || telefone || '';
+        // Nome: pushName do chat, ou da última mensagem SÓ se ela foi recebida (não enviada por mim).
+        // Se a última msg é minha (fromMe), o pushName dela é o MEU nome ("Você") — não serve como nome do contato.
+        const ultimaEhMinha = c.lastMessage?.key?.fromMe === true;
+        const pushDoContato = (!ultimaEhMinha ? c.lastMessage?.pushName : '') || '';
+        const nomeContato = c.name || c.pushName || pushDoContato || telefone || '';
         return {
           cnpj: user.cnpj,
           jid: jidNorm,
