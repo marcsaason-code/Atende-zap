@@ -2962,12 +2962,28 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
 
   const remover = async (id) => {
     if (!confirm('Remover este item?')) return;
+    const tabela = tab === 'funcionarios' ? 'funcionarios' : tab === 'categorias' ? 'categorias' : 'servicos';
     try {
-      if (tab === 'funcionarios') { await sb.from('funcionarios').delete().eq('id', id); setFuncionarios(p => p.filter(f => f.id !== id)); }
-      else if (tab === 'categorias') { await sb.from('categorias').delete().eq('id', id); setCategorias(p => p.filter(c => c.id !== id)); }
-      else { await sb.from('servicos').delete().eq('id', id); setServicos(p => p.filter(s => s.id !== id)); }
+      // Confirma que o banco realmente apagou (delete não lança erro sozinho — retorna em `error`)
+      const { error, count } = await sb.from(tabela).delete({ count: 'exact' }).eq('id', id);
+      if (error) {
+        console.error('Erro ao remover:', error);
+        addToast('Não foi possível remover: ' + (error.message || 'permissão negada'), 'error');
+        return;
+      }
+      if (count === 0) {
+        addToast('Nada foi removido (registro não encontrado ou sem permissão).', 'error');
+        return;
+      }
+      // Só atualiza a tela depois de confirmar que apagou no banco
+      if (tab === 'funcionarios') setFuncionarios(p => p.filter(f => f.id !== id));
+      else if (tab === 'categorias') setCategorias(p => p.filter(c => c.id !== id));
+      else setServicos(p => p.filter(s => s.id !== id));
       addToast('Removido com sucesso.', 'info');
-    } catch { addToast('Erro ao remover', 'error'); }
+    } catch (e) {
+      console.error('Erro ao remover:', e);
+      addToast('Erro ao remover', 'error');
+    }
   };
 
   const toggleAtivo = async (func) => {
