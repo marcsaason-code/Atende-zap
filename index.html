@@ -1846,22 +1846,24 @@ function WhatsApp({ status, setStatus, user, addToast }) {
      enquanto o @lid permanece o mesmo para o contato. */
   const idContato = (obj) => {
     if (!obj) return '';
-    const campos = [obj.telefone, obj.remoteJidAlt, obj.senderPn, obj.remoteJid, obj.jid, obj.id];
-    // 1) @lid PRIMEIRO: o ID do @lid é numérico e passaria no teste de telefone abaixo,
-    //    então precisa ser identificado antes (é número oculto, não telefone real).
+    const k = obj.lastMessage?.key || {};
+    // Inclui o remoteJidAlt/senderPn ANINHADOS na última mensagem (findChats real da Evolution)
+    const campos = [obj.telefone, k.remoteJidAlt, k.senderPn, obj.remoteJidAlt, obj.senderPn, obj.remoteJid, obj.jid, obj.id];
+    // 1) NÚMERO real de telefone PRIMEIRO (agora que lemos o campo aninhado correto).
+    //    Um contato @lid que tem número real resolvido é identificado pelo número (estável e correto).
+    for (const f of campos) {
+      const s = (f || '').toString();
+      if (s.includes('@lid')) continue; // nunca tratar o id de um @lid como telefone
+      const n = s.split('@')[0].replace(/\D/g, '');
+      if (/^\d{10,15}$/.test(n)) return n;
+    }
+    // 2) @lid como chave estável (só quando NÃO há número real em lugar nenhum)
     for (const f of campos) {
       const s = (f || '').toString();
       if (s.includes('@lid')) {
         const id = s.split('@')[0].replace(/\D/g, '');
         if (id) return `lid:${id}`;
       }
-    }
-    // 2) Número real de telefone (remoteJidAlt traz o número quando o primário é @lid)
-    for (const f of campos) {
-      const s = (f || '').toString();
-      if (s.includes('@lid')) continue; // nunca tratar o id de um @lid como telefone
-      const n = s.split('@')[0].replace(/\D/g, '');
-      if (/^\d{10,15}$/.test(n)) return n;
     }
     // 3) Fallback bruto
     const raw = (obj.remoteJid || obj.jid || obj.id || '').toString();
@@ -1929,14 +1931,18 @@ function WhatsApp({ status, setStatus, user, addToast }) {
       const normalizeJid = (jid) => jid ? jid.replace('@c.us', '@s.whatsapp.net') : jid;
 
       // Extrai o número de telefone REAL de um chat.
-      // WhatsApp usa @lid (ID oculto) p/ alguns contatos; o número real vem em remoteJidAlt.
-      // Tenta vários campos e só aceita se for um número de telefone válido (10-15 dígitos).
+      // WhatsApp usa @lid (ID oculto); o número real vem em remoteJidAlt.
+      // No findChats da Evolution, esse campo fica ANINHADO em lastMessage.key.remoteJidAlt
+      // (não no nível de cima do chat). Também checamos senderPn e os campos de topo.
       const soNumero = (v) => (v || '').toString().split('@')[0].replace(/\D/g, '');
       const ehTelefoneValido = (n) => /^\d{10,15}$/.test(n);
       const extrairTelefone = (c) => {
+        const k = c.lastMessage?.key || {};
         const candidatos = [
-          c.remoteJidAlt,                 // número real quando o primário é @lid
-          c.senderPn,                     // phone number do remetente (algumas versões)
+          k.remoteJidAlt,                 // número real aninhado na última mensagem (findChats)
+          k.senderPn,
+          c.remoteJidAlt,                 // fallback: nível de topo (algumas versões)
+          c.senderPn,
           (c.remoteJid && c.remoteJid.includes('@s.whatsapp.net')) ? c.remoteJid : null,
           (c.id && c.id.includes('@s.whatsapp.net')) ? c.id : null,
           (c.jid && c.jid.includes('@s.whatsapp.net')) ? c.jid : null,
@@ -1953,10 +1959,12 @@ function WhatsApp({ status, setStatus, user, addToast }) {
         // JID estável: prefere o número real @s.whatsapp.net; senão mantém o id original
         const telefone = extrairTelefone(c);
         const jidNorm = telefone ? `${telefone}@s.whatsapp.net` : normalizeJid(c.remoteJid || c.id);
+        // Nome: pushName do chat, ou da última mensagem, ou o número
+        const nomeContato = c.name || c.pushName || c.lastMessage?.pushName || telefone || '';
         return {
           cnpj: user.cnpj,
           jid: jidNorm,
-          nome: c.name || c.pushName || telefone || '',
+          nome: nomeContato,
           telefone: telefone,
           ultima_mensagem: c.lastMessage?.message?.conversation || c.lastMessage?.message?.extendedTextMessage?.text || '',
           ultima_msg_at: c.updatedAt || new Date().toISOString(),
