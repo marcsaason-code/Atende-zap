@@ -1974,7 +1974,11 @@ function WhatsApp({ status, setStatus, user, addToast }) {
           unread: c.unreadCount || 0,
           arquivada: false, // veio da Evolution = ativa (desarquiva se estava arquivada)
         };
-      });
+      })
+      // Descarta contatos @lid sem número real resolvido: não têm telefone utilizável
+      // e só poluiriam a lista. Voltam corretos quando a Evolution resolver o número
+      // (ressincronização) ou quando chegar mensagem nova (webhook).
+      .filter(c => !c.jid.includes('@lid'));
 
       if (conversas.length > 0) {
         const { error: upErr } = await sb.from('wa_conversas').upsert(conversas, { onConflict: 'cnpj,jid', ignoreDuplicates: false });
