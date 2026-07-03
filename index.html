@@ -588,13 +588,18 @@ function App() {
   const loadData = useCallback(async (cnpj, silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [{ data: ats }, { data: ags }, { data: funcs }, { data: cats }, { data: servs }] = await Promise.all([
+      // Token da sessão (para as RPCs isoladas). Lido do localStorage p/ não depender de re-render.
+      let _token = null;
+      try { _token = JSON.parse(localStorage.getItem('atende_user') || '{}')?.token || null; } catch {}
+      const [{ data: ats }, { data: ags }, funcsRes, { data: cats }, { data: servs }] = await Promise.all([
         sb.from('atendimentos').select('*').eq('cnpj', cnpj).order('created_at', { ascending: false }),
         sb.from('agendamentos').select('*').eq('cnpj', cnpj).order('data', { ascending: true }),
-        sb.from('funcionarios').select('*').eq('cnpj', cnpj).order('nome'),
+        // Especialistas via RPC isolada (isola por CNPJ no banco). Fallback p/ acesso direto se sem token.
+        _token ? sb.rpc('func_listar', { p_token: _token }) : sb.from('funcionarios').select('*').eq('cnpj', cnpj).order('nome'),
         sb.from('categorias').select('*').eq('cnpj', cnpj).order('nome'),
         sb.from('servicos').select('*').eq('cnpj', cnpj).order('nome'),
       ]);
+      const funcs = funcsRes?.data;
       if (ats?.length) setAtendimentos(prev => {
         const prevStr = JSON.stringify(prev);
         const newStr = JSON.stringify(ats);
@@ -2963,6 +2968,7 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const cnpj = user?.cnpj || '';
+  const token = user?.token || null;
 
   const abrirModal = (tipo, item = null) => { setModalTipo(tipo); setEditItem(item); setShowModal(true); };
   const fecharModal = () => { setShowModal(false); setEditItem(null); setModalTipo(null); };
@@ -2972,12 +2978,26 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
     const tipo = modalTipo;
     try {
       if (tipo === 'funcionarios') {
+        // Especialistas passam por RPC isolada (valida token + isola por CNPJ no banco).
+        if (!token) { addToast('Sessão expirada. Faça login novamente.', 'error'); return; }
         if (editItem) {
-          const { data, error } = await sb.from('funcionarios').update(form).eq('id', editItem.id).select().single();
+          const { data, error } = await sb.rpc('func_editar', {
+            p_token: token, p_id: editItem.id,
+            p_nome: form.nome, p_especialidade: form.especialidade || null,
+            p_cpf: form.cpf || null, p_crm: form.crm || null,
+            p_email: form.email || null, p_senha: form.senha || null,
+            p_ativo: form.ativo !== false,
+          });
           if (error) throw error;
           setFuncionarios(p => p.map(f => f.id === editItem.id ? data : f));
         } else {
-          const { data, error } = await sb.from('funcionarios').insert([{ ...form, cnpj }]).select().single();
+          const { data, error } = await sb.rpc('func_criar', {
+            p_token: token,
+            p_nome: form.nome, p_especialidade: form.especialidade || null,
+            p_cpf: form.cpf || null, p_crm: form.crm || null,
+            p_email: form.email || null, p_senha: form.senha || null,
+            p_ativo: form.ativo !== false,
+          });
           if (error) throw error;
           setFuncionarios(p => [...p, data]);
         }
@@ -3011,24 +3031,19 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
 
   const remover = async (tipo, id) => {
     if (!confirm('Remover este item?')) return;
-    const tabela = tipo;
     try {
-      // Funcionário pode ter agendamentos vinculados (foreign key).
-      // Desvincula antes de excluir: os agendamentos continuam existindo, só ficam sem especialista.
       if (tipo === 'funcionarios') {
-        const { error: unlinkErr } = await sb.from('agendamentos')
-          .update({ funcionario_id: null, funcionario_nome: null })
-          .eq('cnpj', cnpj).eq('funcionario_id', id);
-        if (unlinkErr) {
-          console.error('Erro ao desvincular agendamentos:', unlinkErr);
-          addToast('Não foi possível desvincular os agendamentos: ' + (unlinkErr.message || ''), 'error');
-          return;
-        }
+        // Especialista via RPC isolada (valida token, isola por CNPJ, desvincula agendamentos).
+        if (!token) { addToast('Sessão expirada. Faça login novamente.', 'error'); return; }
+        const { error } = await sb.rpc('func_remover', { p_token: token, p_id: id });
+        if (error) { addToast('Não foi possível remover: ' + (error.message || ''), 'error'); return; }
+        setFuncionarios(p => p.filter(f => f.id !== id));
+        addToast('Removido com sucesso.', 'info');
+        return;
       }
-      // Confirma que o banco realmente apagou (delete não lança erro sozinho — retorna em `error`)
-      const { error, count } = await sb.from(tabela).delete({ count: 'exact' }).eq('id', id);
+      // Categorias e serviços (ainda acesso direto; migram nas próximas fases)
+      const { error, count } = await sb.from(tipo).delete({ count: 'exact' }).eq('id', id);
       if (error) {
-        console.error('Erro ao remover:', error);
         addToast('Não foi possível remover: ' + (error.message || 'permissão negada'), 'error');
         return;
       }
@@ -3036,9 +3051,7 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
         addToast('Nada foi removido (registro não encontrado ou sem permissão).', 'error');
         return;
       }
-      // Só atualiza a tela depois de confirmar que apagou no banco
-      if (tipo === 'funcionarios') setFuncionarios(p => p.filter(f => f.id !== id));
-      else if (tipo === 'categorias') setCategorias(p => p.filter(c => c.id !== id));
+      if (tipo === 'categorias') setCategorias(p => p.filter(c => c.id !== id));
       else setServicos(p => p.filter(s => s.id !== id));
       addToast('Removido com sucesso.', 'info');
     } catch (e) {
@@ -3049,7 +3062,9 @@ function Configuracoes({ user, funcionarios, setFuncionarios, categorias, setCat
 
   const toggleAtivo = async (func) => {
     try {
-      const { data } = await sb.from('funcionarios').update({ ativo: !func.ativo }).eq('id', func.id).select().single();
+      if (!token) { addToast('Sessão expirada. Faça login novamente.', 'error'); return; }
+      const { data, error } = await sb.rpc('func_toggle_ativo', { p_token: token, p_id: func.id });
+      if (error) throw error;
       setFuncionarios(p => p.map(f => f.id === func.id ? data : f));
       addToast(data.ativo ? 'Especialista ativado!' : 'Especialista desativado.', 'info');
     } catch { addToast('Erro', 'error'); }
